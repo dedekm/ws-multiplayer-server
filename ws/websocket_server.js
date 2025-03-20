@@ -1,5 +1,5 @@
 const WebSocket = require("ws");
-const { createPlayer, updatePlayer, removePlayer } = require("../controllers/players_controller");
+// const { createPlayer, updatePlayer, removePlayer } = require("../controllers/players_controller");
 
 let wss;
 let gameWs;
@@ -22,19 +22,19 @@ function setupWebSocket(server) {
             const id = Math.random().toString(36).substring(2, 15);
             console.log("player connected", id);
 
-            createPlayer(id, 0, 0);
+            // createPlayer(id, 0, 0);
 
             if (gameWs) {
-                gameWs.send(JSON.stringify({ id: id, x: 0, y: 0 }));
+                gameWs.send(JSON.stringify({ action: "create", id: id }));
             }
 
             ws.on("message", (message) => {
                 try {
                     const data = JSON.parse(message);
-                    updatePlayer(id, data);
+                    // updatePlayer(id, data);
 
                     if (gameWs) {
-                        gameWs.send(JSON.stringify({ id: id, x: data.x, y: data.y }));
+                        gameWs.send(JSON.stringify({ action: "update", id: id, x: data.x, y: data.y }));
                     }
                 } catch (e) {
                     console.error("error", e);
@@ -42,7 +42,12 @@ function setupWebSocket(server) {
             });
 
             ws.on("close", () => {
-                removePlayer(id);
+                // removePlayer(id);
+
+                if (gameWs) {
+                    gameWs.send(JSON.stringify({ action: "destroy", id: id }));
+                }
+
                 console.log("player disconnected");
             });
         }
