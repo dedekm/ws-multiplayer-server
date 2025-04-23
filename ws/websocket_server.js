@@ -1,10 +1,11 @@
 const WebSocket = require("ws");
-
-let wss;
-let gameWs;
+const PlayersManager = require("../utils/players_manager");
 
 function setupWebSocket(server) {
-  wss = new WebSocket.Server({ server });
+  const wss = new WebSocket.Server({ server });
+
+  let gameWs;
+  const players = new PlayersManager();
 
   wss.on("connection", (ws, req) => {
     const url = new URL(req.url, "http://localhost");
@@ -17,17 +18,37 @@ function setupWebSocket(server) {
       ws.on("close", () => {
         console.log("main game disconnected");
       });
+
+      ws.on("message", (message) => {
+        const data = JSON.parse(message);
+
+        if (data.id) {
+          console.log("message from server:", data)
+
+          const { id, ...dataWithoutId } = data;
+          const player = players.get(id);
+          if (player) player.send(JSON.stringify(dataWithoutId));
+        }
+      });
     } else {
       const id = Math.random().toString(36).substring(2, 15);
+      players.add(id, ws);
       console.log("player connected", id);
 
       if (gameWs) {
-        gameWs.send(JSON.stringify({ action: "create", id: id }));
+        gameWs.send(
+          JSON.stringify({
+            action: "create",
+            id: id
+          })
+        );
       }
 
       ws.on("message", (message) => {
         try {
           const data = JSON.parse(message);
+
+          console.log("message from player:", id, data)
 
           if (gameWs) {
             gameWs.send(
@@ -45,12 +66,16 @@ function setupWebSocket(server) {
       });
 
       ws.on("close", () => {
-        // removePlayer(id);
-
         if (gameWs) {
-          gameWs.send(JSON.stringify({ action: "destroy", id: id }));
+          gameWs.send(
+            JSON.stringify({
+              action: "destroy",
+              id: id
+            })
+          );
         }
 
+        players.remove(id);
         console.log("player disconnected");
       });
     }
