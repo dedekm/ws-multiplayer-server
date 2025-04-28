@@ -54,15 +54,37 @@
             <p></p>
             <p></p>
 
-            <button onmousedown="moveUp()" onmouseup="moveUpNot()">↑</button>
+            <button
+                onmousedown="moveUp()"
+                ontouchstart="moveUp()"
+                onmouseup="moveUpNot()"
+                ontouchend="moveUpNot()"
+            >
+                ↑
+            </button>
             <div class="horizontal-controls">
-                <button onmousedown="moveLeft()" onmouseup="moveLeftNot()">
+                <button
+                    onmousedown="moveLeft()"
+                    ontouchstart="moveLeft()"
+                    onmouseup="moveLeftNot()"
+                    ontouchend="moveLeftNot()"
+                >
                     ←
                 </button>
-                <button onmousedown="moveDown()" onmouseup="moveDownNot()">
+                <button
+                    onmousedown="moveDown()"
+                    ontouchstart="moveDown()"
+                    onmouseup="moveDownNot()"
+                    ontouchend="moveDownNot()"
+                >
                     ↓
                 </button>
-                <button onmousedown="moveRight()" onmouseup="moveRightNot()">
+                <button
+                    onmousedown="moveRight()"
+                    ontouchstart="moveRight()"
+                    onmouseup="moveRightNot()"
+                    ontouchend="moveRightNot()"
+                >
                     →
                 </button>
             </div>
@@ -70,7 +92,13 @@
             <p></p>
             <p></p>
             <p></p>
-            <button class="long" onmousedown="shoot()" onmouseup="shoootNot()">
+            <button
+                class="long"
+                onmousedown="shoot()"
+                ontouchstart="shoot()"
+                onmouseup="shoootNot()"
+                ontouchend="shoootNot()"
+            >
                 SHOOT
             </button>
         </div>
