@@ -5,10 +5,74 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Ship control</title>
         <script src="script.js" defer></script>
+        <style>
+            .title {
+                color: #336699;
+                text-align: center;
+                margin-bottom: 20px;
+                font-family: "Arial", sans-serif;
+            }
+            .controls {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 10px;
+                margin-top: 30px;
+            }
+            .horizontal-controls {
+                display: flex;
+                gap: 10px;
+            }
+            button {
+                width: 60px;
+                height: 60px;
+                font-size: 24px;
+                border-radius: 10px;
+                border: none;
+                background-color: #4caf50;
+                color: white;
+                cursor: pointer;
+                transition: all 0.3s;
+            }
+            button:hover {
+                background-color: #45a049;
+                transform: scale(1.05);
+            }
+            button:active {
+                transform: scale(0.95);
+            }
+            .long {
+                width: 180px;
+                height: 60px;
+            }
+        </style>
     </head>
-
     <body>
-        <h2 class="title">Control ship with arrow keys</h2>
-        <div class="logs"></div>
+        <!-- <h2 class="title">Control ship with arrow keys</h2> -->
+        <!-- <div class="logs"></div> -->
+        <div class="controls">
+            <p></p>
+            <p></p>
+
+            <button onmousedown="moveUp()" onmouseup="moveUpNot()">↑</button>
+            <div class="horizontal-controls">
+                <button onmousedown="moveLeft()" onmouseup="moveLeftNot()">
+                    ←
+                </button>
+                <button onmousedown="moveDown()" onmouseup="moveDownNot()">
+                    ↓
+                </button>
+                <button onmousedown="moveRight()" onmouseup="moveRightNot()">
+                    →
+                </button>
+            </div>
+            <p></p>
+            <p></p>
+            <p></p>
+            <p></p>
+            <button class="long" onmousedown="shoot()" onmouseup="shoootNot()">
+                SHOOT
+            </button>
+        </div>
     </body>
 </html>

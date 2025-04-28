@@ -46,6 +46,7 @@ function sendInput(input) {
   });
 
   if (Object.keys(inputDiff).length !== 0) {
+    console.log(inputDiff);
     ws.send(JSON.stringify(inputDiff));
   }
 
@@ -79,3 +80,43 @@ setInterval(() => {
 
   sendInput(input);
 }, 1000 / 30);
+
+function moveUp() {
+  keysPressed["ArrowUp"] = true;
+}
+
+function moveRight() {
+  keysPressed["ArrowRight"] = true;
+}
+
+function moveLeft() {
+  keysPressed["ArrowLeft"] = true;
+}
+
+function moveDown() {
+  keysPressed["ArrowDown"] = true;
+}
+
+function moveUpNot() {
+  keysPressed["ArrowUp"] = false;
+}
+
+function moveRightNot() {
+  keysPressed["ArrowRight"] = false;
+}
+
+function moveLeftNot() {
+  keysPressed["ArrowLeft"] = false;
+}
+
+function moveDownNot() {
+  keysPressed["ArrowDown"] = false;
+}
+
+function shoot() {
+  keysPressed["Space"] = true;
+}
+
+function shoootNot() {
+  keysPressed["Space"] = false;
+}

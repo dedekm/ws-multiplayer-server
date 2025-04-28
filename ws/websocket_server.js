@@ -23,7 +23,7 @@ function setupWebSocket(server) {
         const data = JSON.parse(message);
 
         if (data.id) {
-          console.log("message from server:", data)
+          console.log("message from server:", data);
 
           const { id, ...dataWithoutId } = data;
           const player = players.get(id);
@@ -39,8 +39,8 @@ function setupWebSocket(server) {
         gameWs.send(
           JSON.stringify({
             action: "create",
-            id: id
-          })
+            id: id,
+          }),
         );
       }
 
@@ -48,7 +48,7 @@ function setupWebSocket(server) {
         try {
           const data = JSON.parse(message);
 
-          console.log("message from player:", id, data)
+          console.log("message from player:", id, data);
 
           if (gameWs) {
             gameWs.send(
@@ -57,6 +57,7 @@ function setupWebSocket(server) {
                 id: id,
                 x: data.x,
                 y: data.y,
+                shoot: data.shoot,
               }),
             );
           }
@@ -70,8 +71,8 @@ function setupWebSocket(server) {
           gameWs.send(
             JSON.stringify({
               action: "destroy",
-              id: id
-            })
+              id: id,
+            }),
           );
         }
 
