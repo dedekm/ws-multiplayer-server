@@ -38,7 +38,7 @@ function setupWebSocket(server) {
       if (gameWs) {
         gameWs.send(
           JSON.stringify({
-            action: "create",
+            event: "create",
             id: id,
           }),
         );
@@ -53,11 +53,11 @@ function setupWebSocket(server) {
           if (gameWs) {
             gameWs.send(
               JSON.stringify({
-                action: "update",
+                event: "update",
                 id: id,
                 x: data.x,
                 y: data.y,
-                shoot: data.shoot,
+                action: data.action,
               }),
             );
           }
@@ -70,7 +70,7 @@ function setupWebSocket(server) {
         if (gameWs) {
           gameWs.send(
             JSON.stringify({
-              action: "destroy",
+              event: "destroy",
               id: id,
             }),
           );

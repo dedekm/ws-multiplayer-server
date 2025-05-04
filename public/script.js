@@ -5,7 +5,7 @@ ws.onmessage = (event) => {
   const data = JSON.parse(event.data);
   const element = document.querySelector(".logs");
 
-  switch (data.action) {
+  switch (data.event) {
     case "damaged":
       element.innerHTML += `<p>damaged, current health: ${data.health}</p>`;
       const title = document.querySelector(".title");
@@ -27,7 +27,7 @@ ws.onmessage = (event) => {
 let currentInput = {
   x: 0,
   y: 0,
-  shoot: false,
+  action: false,
 };
 
 const keysPressed = {
@@ -69,14 +69,14 @@ setInterval(() => {
   const input = {
     x: 0,
     y: 0,
-    shoot: false,
+    action: false,
   };
 
   if (keysPressed["ArrowLeft"]) input.x -= 1;
   if (keysPressed["ArrowRight"]) input.x += 1;
   if (keysPressed["ArrowUp"]) input.y += 1;
   if (keysPressed["ArrowDown"]) input.y -= 1;
-  if (keysPressed["Space"]) input.shoot = true;
+  if (keysPressed["Space"]) input.action = true;
 
   sendInput(input);
 }, 1000 / 30);
@@ -113,10 +113,10 @@ function moveDownNot() {
   keysPressed["ArrowDown"] = false;
 }
 
-function shoot() {
+function action() {
   keysPressed["Space"] = true;
 }
 
-function shoootNot() {
+function actionNot() {
   keysPressed["Space"] = false;
 }
