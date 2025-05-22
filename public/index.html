@@ -4,11 +4,83 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Ship control</title>
+        <script src="https://cdn.statically.io/gh/cyrus2281/joystick-controller/main/dist/umd/joystick-controller.min.js"></script>
         <script src="script.js" defer></script>
+        <style>
+            body {
+                user-select: none;
+                -webkit-user-select: none;
+                -moz-user-select: none;
+                -ms-user-select: none;
+                touch-action: manipulation;
+                overflow: hidden;
+                margin: 0;
+                padding: 0;
+                height: 100vh;
+                display: flex;
+                flex-direction: column;
+                background-color: #1a1a1a;
+            }
+            .game-container {
+                flex: 1;
+                position: relative;
+                width: 100%;
+                background-color: #222;
+            }
+            .controls-container {
+                position: fixed;
+                left: 80%;
+                top: 50%;
+                transform: translate(-50%, -50%);
+                display: flex;
+                align-items: center;
+                gap: 40px;
+            }
+            .btn-shoot {
+                width: 80px;
+                height: 80px;
+                font-size: 16px;
+                border-radius: 50%;
+                border: none;
+                background-color: #ff4444;
+                color: white;
+                cursor: pointer;
+                transition: all 0.3s;
+                text-transform: uppercase;
+                font-weight: bold;
+                letter-spacing: 1px;
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            }
+            .btn-shoot:hover {
+                background-color: #ff2222;
+                transform: scale(1.05);
+                box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+            }
+            .btn-shoot:active {
+                transform: scale(0.95);
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            }
+            .logs {
+                position: fixed;
+                top: 10px;
+                left: 10px;
+                color: white;
+                font-family: monospace;
+            }
+        </style>
     </head>
-
     <body>
-        <h2 class="title">Control ship with arrow keys</h2>
-        <div class="logs"></div>
+        <div class="game-container"></div>
+            <div class="controls-container">
+                <button
+                    class="btn-shoot"
+                    onmousedown="action()"
+                    ontouchstart="action()"
+                    onmouseup="actionNot()"
+                    ontouchend="actionNot()"
+                >
+                </button>
+            </div>
+            <div class="logs"></div>
     </body>
 </html>
