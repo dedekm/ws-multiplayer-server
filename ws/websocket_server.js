@@ -19,27 +19,27 @@ function setupWebSocket(server) {
         console.log("main game disconnected");
       });
 
-      ws.on("message", (message) => {
-        const data = JSON.parse(message);
+      ws.on("message", (rawMessage) => {
+        const message = JSON.parse(rawMessage);
 
-        if (data.id) {
-          console.log("message from server:", data);
+        if (message.id) {
+          console.log("message from server:", message);
 
-          const { id, ...dataWithoutId } = data;
+          const { id, ...messageWithoutId } = message;
           const player = players.get(id);
-          if (player) player.send(JSON.stringify(dataWithoutId));
+          if (player) player.send(JSON.stringify(messageWithoutId));
         }
       });
     } else {
       const id = Math.random().toString(36).substring(2, 15);
 
-      ws.on("message", (message) => {
+      ws.on("message", (rawMessage) => {
         try {
-          const data = JSON.parse(message);
+          const message = JSON.parse(rawMessage);
 
-          console.log("message from player:", id, data);
+          console.log("message from player:", id, message);
 
-          switch (data.event) {
+          switch (message.event) {
             case "create":
               players.add(id, ws);
               console.log("player", id, "created");
@@ -48,7 +48,7 @@ function setupWebSocket(server) {
                 gameWs.send(JSON.stringify({
                   event: "create",
                   id: id,
-                  ...data.attributes
+                  ...message.data
                 }));
               }
               break;
@@ -59,7 +59,7 @@ function setupWebSocket(server) {
                 gameWs.send(JSON.stringify({
                   event: "update",
                   id: id,
-                  ...data.input
+                  ...message.input
                 }));
               }
               break;
