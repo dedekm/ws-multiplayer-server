@@ -32,17 +32,6 @@ function setupWebSocket(server) {
       });
     } else {
       const id = Math.random().toString(36).substring(2, 15);
-      players.add(id, ws);
-      console.log("player connected", id);
-
-      if (gameWs) {
-        gameWs.send(
-          JSON.stringify({
-            event: "create",
-            id: id
-          }),
-        );
-      }
 
       ws.on("message", (message) => {
         try {
@@ -50,16 +39,30 @@ function setupWebSocket(server) {
 
           console.log("message from player:", id, data);
 
-          if (gameWs) {
-            gameWs.send(
-              JSON.stringify({
-                event: "update",
-                id: id,
-                x: data.x,
-                y: data.y,
-                action: data.action
-              }),
-            );
+          switch (data.event) {
+            case "create":
+              players.add(id, ws);
+              console.log("player", id, "created");
+              
+              if (gameWs) {
+                gameWs.send(JSON.stringify({
+                  event: "create",
+                  id: id,
+                  ...data.attributes
+                }));
+              }
+              break;
+            case "update":
+              console.log("player", id, "updated");
+
+              if (gameWs) {
+                gameWs.send(JSON.stringify({
+                  event: "update",
+                  id: id,
+                  ...data.input
+                }));
+              }
+              break;
           }
         } catch (e) {
           console.error("error", e);
@@ -67,17 +70,20 @@ function setupWebSocket(server) {
       });
 
       ws.on("close", () => {
-        if (gameWs) {
-          gameWs.send(
-            JSON.stringify({
-              event: "destroy",
-              id: id
-            })
-          );
-        }
+        if (players.get(id)) {
+          if (gameWs) {
+            gameWs.send(
+              JSON.stringify({
+                event: "destroy",
+                id: id
+              })
+            );
+          }
 
-        players.remove(id);
-        console.log("player disconnected");
+          players.remove(id);
+
+          console.log("player", id, "disconnected");
+        }
       });
     }
   });
