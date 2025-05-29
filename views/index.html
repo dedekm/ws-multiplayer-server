@@ -3,10 +3,10 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>WS control test</title>
+        <title>Hadal </title>
         <script src="https://cdn.statically.io/gh/cyrus2281/joystick-controller/main/dist/umd/joystick-controller.min.js"></script>
         <script src="javascripts/base.js" defer></script>
-        <script src="javascripts/joystick.js" defer></script>
+        <script src="javascripts/hadal.js" defer></script>
         <style>
             body {
                 user-select: none;
@@ -22,13 +22,20 @@
                 flex-direction: column;
                 background-color: #1a1a1a;
             }
+            .game-title {
+                text-align: center;
+                color: white;
+                font-size: 48px;
+                font-weight: bold;
+                margin-top: 20px;
+            }
             .game-container {
                 flex: 1;
                 position: relative;
                 width: 100%;
                 background-color: #222;
             }
-            .team-selection {
+            .species-selection {
                 position: fixed;
                 left: 50%;
                 top: 50%;
@@ -36,7 +43,7 @@
                 display: flex;
                 gap: 40px;
             }
-            .team-card {
+            .species-selection-card {
                 width: 200px;
                 height: 300px;
                 border-radius: 15px;
@@ -46,18 +53,18 @@
                 justify-content: center;
                 cursor: pointer;
                 transition: transform 0.3s;
-                color: white;
+                color: #1a1a1a;
                 font-size: 24px;
                 font-weight: bold;
             }
-            .team-card:hover {
-                transform: scale(1.05);
+            .species-selection-card:hover {
+                transform: scale(1.10);
             }
-            .team-1 {
-                background-color: #ff4444;
+            .species-1 {
+                background-color: #98fff6;
             }
-            .team-2 {
-                background-color: #4444ff;
+            .species-2 {
+                background-color: #719eff;
             }
             .controls-container {
                 display: none;
@@ -103,12 +110,13 @@
     </head>
     <body>
         <div class="game-container">
-            <div class="team-selection">
-                <div class="team-card team-1" onclick="selectTeam(1)">
-                    Team Red
+            <h1 class="game-title">Hadal</h1>
+            <div class="species-selection">
+                <div class="species-selection-card species-1" data-evolution-line="0">
+                    Larvacean
                 </div>
-                <div class="team-card team-2" onclick="selectTeam(2)">
-                    Team Blue
+                <div class="species-selection-card species-2" data-evolution-line="1">
+                    Sea Angel
                 </div>
             </div>
             <div class="controls-container">

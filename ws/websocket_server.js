@@ -37,12 +37,10 @@ function setupWebSocket(server) {
         try {
           const message = JSON.parse(rawMessage);
 
-          console.log("message from player:", id, message);
-
           switch (message.event) {
             case "create":
               players.add(id, ws);
-              console.log("player", id, "created");
+              console.log("player", id, "created", message.data);
               
               if (gameWs) {
                 gameWs.send(JSON.stringify({
@@ -53,7 +51,7 @@ function setupWebSocket(server) {
               }
               break;
             case "update":
-              console.log("player", id, "updated");
+              console.log("player", id, "updated", message.input);
 
               if (gameWs) {
                 gameWs.send(JSON.stringify({

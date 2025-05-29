@@ -18,15 +18,15 @@ const keysPressed = {
 };
 
 
-function selectTeam(team) {
-  window.gameWs = initializeWebSocket({ team: team });
+document.querySelectorAll(".species-selection-card").forEach(card => {
+  card.addEventListener("click", (e) => {
+    window.gameWs = initializeWebSocket({ evolution_line: Number(card.dataset.evolutionLine) });
 
-  const teamSelection = document.querySelector(".team-selection");
-  const color = team === 1 ? "red" : "blue";
-  teamSelection.remove();
+    initializeControls(getComputedStyle(card).backgroundColor);
 
-  initializeControls(color);
-}
+    document.querySelector(".species-selection").remove();
+  });
+});
 
 function initializeControls(color) {
   // initialize joystick
