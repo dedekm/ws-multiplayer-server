@@ -20,6 +20,8 @@ const keysPressed = {
 
 document.querySelectorAll(".species-selection-card").forEach(card => {
   card.addEventListener("click", (e) => {
+    const evolutionLine = Number(card.dataset.evolutionLine);
+    
     const nicknameInput = document.querySelector(".nickname-input");
     const nickname = nicknameInput.value.trim();
     
@@ -29,13 +31,35 @@ document.querySelectorAll(".species-selection-card").forEach(card => {
     }
 
     window.gameWs = initializeWebSocket({ 
-      evolution_line: Number(card.dataset.evolutionLine),
+      evolution_line: evolutionLine,
       nickname: nickname
     });
 
-    initializeControls(getComputedStyle(card).backgroundColor, nickname);
+    window.gameWs.onmessage = (event) => {
+      const data = JSON.parse(event.data);
 
-    document.querySelector(".species-selection").remove();
+      switch (data.event) {
+        case "update":
+          if (data.params && data.params.health) {
+            console.log("current health", data.params.health);
+            updateHealthBar(data.params.health);
+          }
+          break;
+        case "evolved":
+          handleEvolution(evolutionLine);
+          break;
+        case "death":
+          console.log("death");
+          break;
+        default:
+          console.log(`Unknown event: ${data.event}`);
+      }
+    };
+
+    initializeControls(getComputedStyle(card).backgroundColor, nickname);
+    showActiveSpecies(card);
+
+    document.querySelector(".species-selection").style.display = "none";
   });
 });
 
@@ -59,10 +83,13 @@ function initializeControls(color, nickname) {
     }
   );
 
-  // show & colorize action button and display nickname
+  // show controls and set initial state
   document.querySelector(".controls-container").style.display = "flex";
   document.querySelector(".controls-container .btn-action").style.backgroundColor = color;
   document.querySelector(".player-nickname").textContent = nickname;
+  document.querySelector(".player-info").style.display = "flex";
+  document.querySelector(".health-bar").style.display = "flex";
+  updateHealthBar(1.0);
 
   // keep keyboard controls as fallback
   document.addEventListener("keydown", (e) => {
@@ -102,6 +129,36 @@ function initializeControls(color, nickname) {
   }, 1000 / 30);
 }
 
+function handleEvolution(evolutionLine) {
+  // Hide the level 1 card
+  const level1Card = document.querySelector(`.species-selection-card[data-evolution-line="${evolutionLine}"][data-level="1"]`);
+  if (level1Card) {
+    level1Card.style.display = 'none';
+  }
+
+  // Show the level 2 card
+  const level2Card = document.querySelector(`.species-selection-card[data-evolution-line="${evolutionLine}"][data-level="2"]`);
+  if (level2Card) {
+    level2Card.style.display = 'flex';
+    // Update the action button color to match the evolved form
+    document.querySelector(".controls-container .btn-action").style.backgroundColor = getComputedStyle(level2Card).backgroundColor;
+    // Update the active species card
+    showActiveSpecies(level2Card);
+  }
+}
+
+function showActiveSpecies(card) {
+  const container = document.querySelector('.active-species-container');
+  container.style.display = 'block';
+  
+  // Clear any existing cards
+  container.innerHTML = '';
+  
+  // Clone the card and add it to the container
+  const activeCard = card.cloneNode(true);
+  container.appendChild(activeCard);
+}
+
 function sendInput(input) {
   const inputDiff = {};
 
@@ -117,6 +174,21 @@ function sendInput(input) {
   }
 
   currentInput = input;
+}
+
+function updateHealthBar(health) {
+  const healthBar = document.querySelector('.health-bar-fill');
+  const percentage = Math.round(Math.max(0, Math.min(100, health * 100)));
+  healthBar.style.width = `${percentage}%`;
+  
+  // Change color based on health level
+  if (percentage > 60) {
+    healthBar.style.backgroundColor = '#2ecc71'; // Green
+  } else if (percentage > 30) {
+    healthBar.style.backgroundColor = '#f1c40f'; // Yellow
+  } else {
+    healthBar.style.backgroundColor = '#e74c3c'; // Red
+  }
 }
 
 document.addEventListener("contextmenu", function (e) {

@@ -21,9 +21,10 @@
                 display: flex;
                 flex-direction: column;
                 background-color: #1a1a1a;
+                text-align: center;
+
             }
             .game-title {
-                text-align: center;
                 color: white;
                 font-size: 48px;
                 font-weight: bold;
@@ -76,7 +77,7 @@
                 font-size: 24px;
                 font-weight: bold;
             }
-            .species-selection-card:hover {
+            .species-cards .species-selection-card:hover {
                 transform: scale(1.10);
             }
             .species-1 {
@@ -84,6 +85,15 @@
             }
             .species-2 {
                 background-color: #719eff;
+            }
+            .species-1-evolved {
+                background-color: #5affd6;
+            }
+            .species-2-evolved {
+                background-color: #4169e1;
+            }
+            .species-selection-card.evolved {
+                display: none;
             }
             .controls-container {
                 display: none;
@@ -95,19 +105,43 @@
                 gap: 40px;
                 flex-direction: column;
             }
-            .player-nickname {
+            .player-info {
                 position: fixed;
                 left: 50%;
-                bottom: 30px;
-                transform: translateX(-50%);
-                color: white;
-                font-size: 24px;
-                font-weight: bold;
-                text-align: center;
-                text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-                background-color: rgba(0, 0, 0, 0.3);
-                padding: 10px 20px;
+                top: 25%;
+                transform: translate(-50%, -50%);
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 20px;
+            }
+            .health-bar {
+                width: 200px;
+                height: 20px;
+                background-color: #333;
                 border-radius: 10px;
+                overflow: hidden;
+                display: none;
+            }
+            .health-bar-fill {
+                width: 100%;
+                height: 100%;
+                background-color: #2ecc71;
+                transition: width 0.3s ease;
+            }
+            .active-species-container {
+                position: static;
+                transform: none;
+                left: auto;
+                bottom: auto;
+                display: none;
+            }
+            .player-nickname {
+                position: static;
+                transform: none;
+                left: auto;
+                bottom: auto;
+                color: white;
             }
             .btn-action {
                 width: 80px;
@@ -148,11 +182,17 @@
             <div class="species-selection">
                 <input type="text" class="nickname-input" placeholder="Enter your nickname" maxlength="20" required>
                 <div class="species-cards">
-                    <div class="species-selection-card species-1" data-evolution-line="0">
+                    <div class="species-selection-card species-1" data-evolution-line="0" data-level="1">
                         Larvacean
                     </div>
-                    <div class="species-selection-card species-2" data-evolution-line="1">
+                    <div class="species-selection-card species-1-evolved evolved" data-evolution-line="0" data-level="2">
+                        Giant Larvacean
+                    </div>
+                    <div class="species-selection-card species-2" data-evolution-line="1" data-level="1">
                         Sea Angel
+                    </div>
+                    <div class="species-selection-card species-2-evolved evolved" data-evolution-line="1" data-level="2">
+                        Battle Angel
                     </div>
                 </div>
             </div>
@@ -164,7 +204,13 @@
                 </button>
             </div>
             <div class="logs"></div>
-            <div class="player-nickname"></div>
+            <div class="player-info">
+                <div class="active-species-container"></div>
+                <div class="health-bar">
+                    <div class="health-bar-fill"></div>
+                </div>
+                <div class="player-nickname"></div>
+            </div>
         </div>
     </body>
 </html>
