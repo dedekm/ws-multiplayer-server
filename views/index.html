@@ -174,6 +174,35 @@
                 color: white;
                 font-family: monospace;
             }
+.death-screen {
+                display: none;
+                position: fixed;
+                left: 50%;
+                top: 50%;
+                transform: translate(-50%, -50%);
+                text-align: center;
+                color: white;
+                z-index: 100;
+            }
+            .death-screen h2 {
+                font-size: 48px;
+                margin-bottom: 30px;
+                text-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+            }
+            .restart-button {
+                padding: 15px 30px;
+                font-size: 24px;
+                background-color: #e74c3c;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+            }
+            .restart-button:hover {
+                background-color: #c0392b;
+                transform: scale(1.05);
+            }
         </style>
     </head>
     <body>
@@ -210,6 +239,10 @@
                     <div class="health-bar-fill"></div>
                 </div>
                 <div class="player-nickname"></div>
+            </div>
+            <div class="death-screen">
+                <h2>You're Dead!</h2>
+                <button class="restart-button">Restart Game</button>
             </div>
         </div>
     </body>

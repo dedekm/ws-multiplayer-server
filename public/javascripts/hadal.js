@@ -1,3 +1,5 @@
+const game = {}
+
 let currentInput = {
   x: 0,
   y: 0,
@@ -30,12 +32,12 @@ document.querySelectorAll(".species-selection-card").forEach(card => {
       return;
     }
 
-    window.gameWs = initializeWebSocket({ 
+    game.ws = initializeWebSocket({ 
       evolution_line: evolutionLine,
       nickname: nickname
     });
 
-    window.gameWs.onmessage = (event) => {
+    game.ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
 
       switch (data.event) {
@@ -50,6 +52,7 @@ document.querySelectorAll(".species-selection-card").forEach(card => {
           break;
         case "death":
           console.log("death");
+          handleDeath();
           break;
         default:
           console.log(`Unknown event: ${data.event}`);
@@ -63,9 +66,24 @@ document.querySelectorAll(".species-selection-card").forEach(card => {
   });
 });
 
+// Add restart button handler
+document.querySelector(".restart-button").addEventListener("click", () => {
+  // Hide death screen
+  document.querySelector(".death-screen").style.display = "none";
+  
+  // Show species selection
+  document.querySelector(".species-selection").style.display = "flex";
+  
+  // Close WebSocket connection if it exists
+  if (game.ws) {
+    game.ws.close();
+    game.ws = null;
+  }
+});
+
 function initializeControls(color, nickname) {
   // initialize joystick
-  const joystick = new JoystickController.default(
+  game.joystick = new JoystickController.default(
     {
       radius: 100,
       joystickRadius: 40,
@@ -166,8 +184,8 @@ function sendInput(input) {
     if (currentInput[key] !== input[key]) inputDiff[key] = input[key];
   });
 
-  if (Object.keys(inputDiff).length !== 0 && window.gameWs) {
-    window.gameWs.send(JSON.stringify({
+  if (Object.keys(inputDiff).length !== 0 && game.ws) {
+    game.ws.send(JSON.stringify({
       event: "update",
       input: inputDiff
     }));
@@ -188,6 +206,21 @@ function updateHealthBar(health) {
     healthBar.style.backgroundColor = '#f1c40f'; // Yellow
   } else {
     healthBar.style.backgroundColor = '#e74c3c'; // Red
+  }
+}
+
+function handleDeath() {
+  // Hide game elements
+  document.querySelector(".controls-container").style.display = "none";
+  document.querySelector(".player-info").style.display = "none";
+  
+  // Show death screen
+  document.querySelector(".death-screen").style.display = "block";
+
+  // Remove joystick
+  if (game.joystick) {
+    game.joystick.destroy();
+    game.joystick = null;
   }
 }
 
