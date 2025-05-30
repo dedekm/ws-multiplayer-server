@@ -20,15 +20,26 @@ const keysPressed = {
 
 document.querySelectorAll(".species-selection-card").forEach(card => {
   card.addEventListener("click", (e) => {
-    window.gameWs = initializeWebSocket({ evolution_line: Number(card.dataset.evolutionLine) });
+    const nicknameInput = document.querySelector(".nickname-input");
+    const nickname = nicknameInput.value.trim();
+    
+    if (!nickname) {
+      nicknameInput.focus();
+      return;
+    }
 
-    initializeControls(getComputedStyle(card).backgroundColor);
+    window.gameWs = initializeWebSocket({ 
+      evolution_line: Number(card.dataset.evolutionLine),
+      nickname: nickname
+    });
+
+    initializeControls(getComputedStyle(card).backgroundColor, nickname);
 
     document.querySelector(".species-selection").remove();
   });
 });
 
-function initializeControls(color) {
+function initializeControls(color, nickname) {
   // initialize joystick
   const joystick = new JoystickController.default(
     {
@@ -48,9 +59,10 @@ function initializeControls(color) {
     }
   );
 
-  // show & colorize action button
+  // show & colorize action button and display nickname
   document.querySelector(".controls-container").style.display = "flex";
   document.querySelector(".controls-container .btn-action").style.backgroundColor = color;
+  document.querySelector(".player-nickname").textContent = nickname;
 
   // keep keyboard controls as fallback
   document.addEventListener("keydown", (e) => {

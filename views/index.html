@@ -41,6 +41,25 @@
                 top: 50%;
                 transform: translate(-50%, -50%);
                 display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 40px;
+            }
+            .nickname-input {
+                padding: 10px 15px;
+                font-size: 18px;
+                border: 2px solid #444;
+                border-radius: 8px;
+                background-color: #333;
+                color: white;
+                text-align: center;
+                width: 200px;
+            }
+            .nickname-input::placeholder {
+                color: #888;
+            }
+            .species-cards {
+                display: flex;
                 gap: 40px;
             }
             .species-selection-card {
@@ -74,6 +93,21 @@
                 transform: translate(-50%, -50%);
                 align-items: center;
                 gap: 40px;
+                flex-direction: column;
+            }
+            .player-nickname {
+                position: fixed;
+                left: 50%;
+                bottom: 30px;
+                transform: translateX(-50%);
+                color: white;
+                font-size: 24px;
+                font-weight: bold;
+                text-align: center;
+                text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+                background-color: rgba(0, 0, 0, 0.3);
+                padding: 10px 20px;
+                border-radius: 10px;
             }
             .btn-action {
                 width: 80px;
@@ -112,11 +146,14 @@
         <div class="game-container">
             <h1 class="game-title">Hadal</h1>
             <div class="species-selection">
-                <div class="species-selection-card species-1" data-evolution-line="0">
-                    Larvacean
-                </div>
-                <div class="species-selection-card species-2" data-evolution-line="1">
-                    Sea Angel
+                <input type="text" class="nickname-input" placeholder="Enter your nickname" maxlength="20" required>
+                <div class="species-cards">
+                    <div class="species-selection-card species-1" data-evolution-line="0">
+                        Larvacean
+                    </div>
+                    <div class="species-selection-card species-2" data-evolution-line="1">
+                        Sea Angel
+                    </div>
                 </div>
             </div>
             <div class="controls-container">
@@ -127,6 +164,7 @@
                 </button>
             </div>
             <div class="logs"></div>
+            <div class="player-nickname"></div>
         </div>
     </body>
 </html>
