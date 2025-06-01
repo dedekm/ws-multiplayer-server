@@ -145,12 +145,12 @@
                 color: white;
             }
             .btn-action {
+                --charge-height: 0%;
                 width: 80px;
                 height: 80px;
                 font-size: 16px;
                 border-radius: 50%;
                 border: none;
-                background-color: #ff4444;
                 color: white;
                 cursor: pointer;
                 transition: all 0.3s;
@@ -158,6 +158,23 @@
                 font-weight: bold;
                 letter-spacing: 1px;
                 box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+                position: relative;
+                overflow: hidden;
+                background: #e74c3c;
+            }
+            .btn-action::before {
+                content: '';
+                position: absolute;
+                left: 0;
+                bottom: 0;
+                width: 100%;
+                height: var(--charge-height);
+                background-color: #2ecc71;
+                transition: height 0.3s ease;
+            }
+            .btn-action span {
+                position: relative;
+                z-index: 1;
             }
             .btn-action:hover {
                 background-color: #ff2222;
@@ -231,6 +248,7 @@
                     class="btn-action"
                     id="btn-action"
                 >
+                    <span>Action</span>
                 </button>
             </div>
             <div class="logs"></div>

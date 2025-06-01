@@ -55,12 +55,19 @@ document.querySelectorAll(".species-selection-card").forEach(card => {
 
       switch (data.event) {
         case "update":
-          if (data.params && data.params.health) {
-            console.log("current health", data.params.health);
-            updateHealthBar(data.params.health);
+          const { health, abilityCharge } = data.params || {};
+          
+          if (health !== undefined) {
+            console.log("health updated", health);
+            updateHealthBar(health);
+          }
+          if (abilityCharge !== undefined) {
+            console.log("ability charge updated", abilityCharge);
+            updateAbilityCharge(abilityCharge);
           }
           break;
         case "evolved":
+          console.log("evolved");
           handleEvolution(evolutionLine);
           break;
         case "death":
@@ -251,6 +258,12 @@ function handleDeath() {
     game.joystick.destroy();
     game.joystick = null;
   }
+}
+
+function updateAbilityCharge(charge) {
+  const btnAction = document.getElementById("btn-action");
+  const height = Math.max(0, Math.min(100, charge * 100));
+  btnAction.style.setProperty('--charge-height', `${height}%`);
 }
 
 document.addEventListener("contextmenu", function (e) {
