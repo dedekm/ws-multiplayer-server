@@ -1,5 +1,18 @@
 const game = {}
 
+// Check for nickname in URL parameters when page loads
+document.addEventListener('DOMContentLoaded', () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const nickname = urlParams.get('nickname');
+  
+  if (nickname) {
+    const nicknameInput = document.querySelector('.nickname-input');
+    if (nicknameInput) {
+      nicknameInput.value = nickname;
+    }
+  }
+});
+
 let currentInput = {
   x: 0,
   y: 0,
