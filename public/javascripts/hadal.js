@@ -123,10 +123,26 @@ function initializeControls(color, nickname) {
   });
 
   const btnAction = document.getElementById("btn-action");
+  
+  // Mouse events
   btnAction.addEventListener("mousedown", (e) => {
     keysPressed["Space"] = true;
   });
   btnAction.addEventListener("mouseup", (e) => {
+    keysPressed["Space"] = false;
+  });
+  
+  // Touch events
+  btnAction.addEventListener("touchstart", (e) => {
+    e.preventDefault(); // Prevent default to avoid double events
+    keysPressed["Space"] = true;
+  });
+  btnAction.addEventListener("touchend", (e) => {
+    e.preventDefault(); // Prevent default to avoid double events
+    keysPressed["Space"] = false;
+  });
+  btnAction.addEventListener("touchcancel", (e) => {
+    e.preventDefault(); // Prevent default to avoid double events
     keysPressed["Space"] = false;
   });
 
