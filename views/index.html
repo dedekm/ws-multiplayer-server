@@ -13,7 +13,7 @@
         <link rel="preload" href="fonts/PicNic.woff" as="font" type="font/woff" crossorigin>
 
         <style>
-            @import url('https://fonts.googleapis.com/css2?family=Archivo&display=swap');
+            @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;700&display=swap');
 
             @font-face {
                 font-family: 'PicNic';
@@ -127,7 +127,7 @@
                 padding: 10px;
                 scrollbar-width: thin;
                 scrollbar-color: #9ECB96 #00243D;
-                max-height: 60vh;
+                max-height: 90vh;
             }
             .species-cards::-webkit-scrollbar {
                 width: 8px;
@@ -141,13 +141,13 @@
                 border-radius: 4px;
             }
             .species-selection-card {
-                width: min(200px, 80vw);
-                height: min(200px, 80vw);
+                width: min(300px, 90vw);
+                height: auto;
                 border-radius: 15px;
                 display: flex;
                 flex-direction: column;
                 align-items: center;
-                justify-content: center;
+                justify-content: flex-start;
                 cursor: pointer;
                 transition: transform 0.3s;
                 text-align: center;
@@ -156,10 +156,25 @@
                 box-shadow: 0px -1px 6.3px 3px #9ECB96B2 inset, 5px -7px 10.5px -5px #9ECB96;
                 background-color: #00243D;
                 color: #9ECB96;
+                gap: 15px;
+            }
+            .species-selection-card .title {
                 font-size: min(30px, 7vw);
                 font-family: "PicNic", sans-serif;
                 font-weight: 700;
                 font-style: normal;
+            }
+            .species-selection-card .image {
+                width: 30%;
+                height: auto;
+                object-fit: contain;
+                border-radius: 10px;
+            }
+            .species-selection-card .description {
+                font-size: 14px;
+                font-family: "Archivo", sans-serif;
+                line-height: 1.4;
+                opacity: 0.9;
             }
             .species-cards .species-selection-card:hover {
                 transform: scale(1.05);
@@ -275,7 +290,7 @@
                 color: white;
                 font-family: monospace;
             }
-.death-screen {
+            .death-screen {
                 display: none;
                 position: fixed;
                 left: 50%;
@@ -341,22 +356,34 @@
                 <div class="species-step">
                     <div class="species-cards">
                         <div class="species-selection-card species-1" data-evolution-line="0" data-level="1">
-                            Giant Larvacean
+                            <div class="title">Giant Larvacean</div>
+                            <img src="images/01_larvacean.png" alt="Giant Larvacean" class="image">
+                            <div class="description"><b>Mucous Sheath</b><br>Secretes a mucous structure that lingers, slowing nearby predators.</div>
                         </div>
                         <div class="species-selection-card species-1-evolved evolved" data-evolution-line="0" data-level="2">
-                            Comb Jelly
+                            <div class="title">Comb Jelly</div>
+                            <img src="images/02_comb_jelly.png" alt="Comb Jelly" class="image">
+                            <div class="description"><b>Colloblast Strand</b><br>Unleashes a sticky tentacle that can draw in enemies and harm them.</div>
                         </div>
                         <div class="species-selection-card species-1-evolved evolved" data-evolution-line="0" data-level="3">
-                            Atolla
+                            <div class="title">Atolla</div>
+                            <img src="images/03_atolla.png" alt="Atolla" class="image">
+                            <div class="description"><b>Hypertrophied Tentacle</b><br>Long trailing tentacle that filters food and harms enemies.</div>
                         </div>
                         <div class="species-selection-card species-2" data-evolution-line="1" data-level="1">
-                            Cockatoo Squid
+                            <div class="title">Cockatoo Squid</div>
+                            <img src="images/11_glass_squid.png" alt="Cockatoo Squid" class="image">
+                            <div class="description"><b>Hydrostatic Swelling</b><br>Inflates its body to temporarily increase size, reducing incoming damage.</div>
                         </div>
                         <div class="species-selection-card species-2-evolved evolved" data-evolution-line="1" data-level="2">
-                            Sea Angel
+                            <div class="title">Sea Angel</div>
+                            <img src="images/12_sea_angel.png" alt="Sea Angel" class="image">
+                            <div class="description"><b>Claw Extension</b><br>Extends its claw-like appendages to deal increased damage temporarily.</div>
                         </div>
                         <div class="species-selection-card species-2-evolved evolved" data-evolution-line="1" data-level="3">
-                            Vampire Squid
+                            <div class="title">Vampire Squid</div>
+                            <img src="images/13_vampire_squid.png" alt="Vampire Squid" class="image">
+                            <div class="description"><b>Defensive Curl</b><br>Curls into a spiky ball, becoming temporarily invulnerable while knocking back and damaging enemies on contact.</div>
                         </div>
                     </div>
                 </div>
