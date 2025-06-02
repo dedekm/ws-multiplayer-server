@@ -3,13 +3,33 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Hadal </title>
+        <title>Hlubiny</title>
         <script src="https://cdn.statically.io/gh/cyrus2281/joystick-controller/main/dist/umd/joystick-controller.min.js"></script>
         <script src="javascripts/base.js" defer></script>
-        <script src="javascripts/hadal.js" defer></script>
+        <script src="javascripts/hlubiny.js" defer></script>
         <script src="javascripts/testing.js" defer></script>
+
+        <link rel="preload" href="fonts/PicNic.woff2" as="font" type="font/woff2" crossorigin>
+        <link rel="preload" href="fonts/PicNic.woff" as="font" type="font/woff" crossorigin>
+
         <style>
+            @import url('https://fonts.googleapis.com/css2?family=Archivo&display=swap');
+
+            @font-face {
+                font-family: 'PicNic';
+                src: url('fonts/PicNic.woff2') format('woff2'),
+                     url('fonts/PicNic.woff') format('woff');
+                font-weight: normal;
+                font-style: normal;
+                font-display: swap;
+            }
+
             body {
+                font-family: "Archivo", sans-serif;
+                font-optical-sizing: auto;
+                font-weight: 400;
+                font-style: normal;
+
                 user-select: none;
                 -webkit-user-select: none;
                 -moz-user-select: none;
@@ -21,52 +41,108 @@
                 height: 100vh;
                 display: flex;
                 flex-direction: column;
-                background-color: #1a1a1a;
-                text-align: center;
-
-            }
-            .game-title {
-                color: white;
-                font-size: 48px;
-                font-weight: bold;
-                margin-top: 20px;
+                text-align: center; 
             }
             .game-container {
                 flex: 1;
                 position: relative;
                 width: 100%;
-                background-color: #222;
+                background: linear-gradient(180deg, #00243D 25%, #9ECB96B2 100%);
+                display: flex;
+                flex-direction: column;
+            }
+            .game-title {
+                position: relative;
+                width: min(400px, 80vw);
+                height: auto;
+                filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+                transition: opacity 0.5s ease, transform 0.5s ease;
+                margin: 20px auto;
+            }
+            .game-title.hidden {
+                opacity: 0;
+                transform: translateY(-150px);
+                display: none;
             }
             .species-selection {
-                position: fixed;
-                left: 50%;
-                top: 50%;
-                transform: translate(-50%, -50%);
+                flex: 1;
                 display: flex;
                 flex-direction: column;
                 align-items: center;
-                gap: 40px;
+                justify-content: center;
+                width: 100%;
+                padding: 20px;
+                box-sizing: border-box;
+                min-height: 0; /* Allows flex container to shrink below content size */
+            }
+            .nickname-step, .species-step {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 20px;
+                opacity: 1;
+                transform: translateY(0);
+                transition: opacity 0.5s ease, transform 0.5s ease;
+                width: 100%;
+            }
+            .nickname-step.hidden {
+                opacity: 0;
+                transform: translateY(-30px);
+                pointer-events: none;
+                position: absolute;
+            }
+            .species-step {
+                opacity: 0;
+                transform: translateY(30px);
+                pointer-events: none;
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                min-height: 0; /* Allows flex container to shrink below content size */
+            }
+            .species-step.visible {
+                opacity: 1;
+                transform: translateY(0);
+                pointer-events: auto;
             }
             .nickname-input {
-                padding: 10px 15px;
+                padding: 15px 20px;
                 font-size: 18px;
-                border: 2px solid #444;
-                border-radius: 8px;
-                background-color: #333;
-                color: white;
+                border: 2px solid #9ECB96;
+                border-radius: 20px;
+                background-color: rgba(0, 36, 61, 0.5);
+                color: #9ECB96;
                 text-align: center;
-                width: 200px;
+                width: 250px;
             }
             .nickname-input::placeholder {
-                color: #888;
+                color: rgba(158, 203, 150, 0.6);
             }
             .species-cards {
                 display: flex;
-                gap: 40px;
+                flex-direction: column;
+                gap: 20px;
+                overflow-y: auto;
+                padding: 10px;
+                scrollbar-width: thin;
+                scrollbar-color: #9ECB96 #00243D;
+                max-height: 60vh;
+            }
+            .species-cards::-webkit-scrollbar {
+                width: 8px;
+            }
+            .species-cards::-webkit-scrollbar-track {
+                background: #00243D;
+                border-radius: 4px;
+            }
+            .species-cards::-webkit-scrollbar-thumb {
+                background: #9ECB96;
+                border-radius: 4px;
             }
             .species-selection-card {
-                width: 200px;
-                height: 300px;
+                width: min(200px, 80vw);
+                height: min(200px, 80vw);
                 border-radius: 15px;
                 display: flex;
                 flex-direction: column;
@@ -74,14 +150,21 @@
                 justify-content: center;
                 cursor: pointer;
                 transition: transform 0.3s;
-                color: #1a1a1a;
-                font-size: 24px;
-                font-weight: bold;
+                text-align: center;
+                padding: 20px;
+                box-sizing: border-box;
+                box-shadow: 0px -1px 6.3px 3px #9ECB96B2 inset, 5px -7px 10.5px -5px #9ECB96;
+                background-color: #00243D;
+                color: #9ECB96;
+                font-size: min(30px, 7vw);
+                font-family: "PicNic", sans-serif;
+                font-weight: 700;
+                font-style: normal;
             }
             .species-cards .species-selection-card:hover {
-                transform: scale(1.10);
+                transform: scale(1.05);
             }
-            .species-1 {
+            /* .species-1 {
                 background-color: #98fff6;
             }
             .species-2 {
@@ -92,7 +175,7 @@
             }
             .species-2-evolved {
                 background-color: #4169e1;
-            }
+            } */
             .species-selection-card.evolved {
                 display: none;
             }
@@ -100,7 +183,7 @@
                 display: none;
                 position: fixed;
                 left: 80%;
-                top: 50%;
+                top: 70%;
                 transform: translate(-50%, -50%);
                 align-items: center;
                 gap: 40px;
@@ -119,7 +202,7 @@
             .health-bar {
                 width: 200px;
                 height: 20px;
-                background-color: #333;
+                background-color: #5c1919;
                 border-radius: 10px;
                 overflow: hidden;
                 display: none;
@@ -127,7 +210,7 @@
             .health-bar-fill {
                 width: 100%;
                 height: 100%;
-                background-color: #2ecc71;
+                background-color: #9ECB96;
                 transition: width 0.3s ease;
             }
             .active-species-container {
@@ -169,7 +252,7 @@
                 bottom: 0;
                 width: 100%;
                 height: var(--charge-height);
-                background-color: #2ecc71;
+                background-color: #9ECB96;
                 transition: height 0.3s ease;
             }
             .btn-action span {
@@ -221,25 +304,60 @@
                 background-color: #c0392b;
                 transform: scale(1.05);
             }
+            .continue-button {
+                padding: 15px 30px;
+                font-size: 18px;
+                background-color: #00243D;
+                color: #9ECB96;
+                border: 2px solid #9ECB96;
+                border-radius: 20px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                margin-top: 20px;
+                box-shadow: 0px -1px 6.3px 3px #9ECB96B2 inset, 5px -7px 10.5px -5px #9ECB96;
+            }
+            .continue-button:hover {
+                background-color: rgba(158, 203, 150, 0.2);
+                transform: scale(1.05);
+            }
+            .continue-button:disabled {
+                background-color: rgba(0, 36, 61, 0.3);
+                border-color: rgba(158, 203, 150, 0.3);
+                color: rgba(158, 203, 150, 0.3);
+                cursor: not-allowed;
+                transform: none;
+                box-shadow: none;
+            }
         </style>
     </head>
     <body>
         <div class="game-container">
-            <h1 class="game-title">Hadal</h1>
+            <img src="images/gametitle.svg" alt="Hlubiny" class="game-title">
             <div class="species-selection">
-                <input type="text" class="nickname-input" placeholder="Enter your nickname" maxlength="20" required>
-                <div class="species-cards">
-                    <div class="species-selection-card species-1" data-evolution-line="0" data-level="1">
-                        Larvacean
-                    </div>
-                    <div class="species-selection-card species-1-evolved evolved" data-evolution-line="0" data-level="2">
-                        Giant Larvacean
-                    </div>
-                    <div class="species-selection-card species-2" data-evolution-line="1" data-level="1">
-                        Sea Angel
-                    </div>
-                    <div class="species-selection-card species-2-evolved evolved" data-evolution-line="1" data-level="2">
-                        Battle Angel
+                <div class="nickname-step">
+                    <input type="text" class="nickname-input" placeholder="Enter your nickname" maxlength="20" required>
+                    <button class="continue-button">Continue</button>
+                </div>
+                <div class="species-step">
+                    <div class="species-cards">
+                        <div class="species-selection-card species-1" data-evolution-line="0" data-level="1">
+                            Giant Larvacean
+                        </div>
+                        <div class="species-selection-card species-1-evolved evolved" data-evolution-line="0" data-level="2">
+                            Comb Jelly
+                        </div>
+                        <div class="species-selection-card species-1-evolved evolved" data-evolution-line="0" data-level="3">
+                            Atolla
+                        </div>
+                        <div class="species-selection-card species-2" data-evolution-line="1" data-level="1">
+                            Cockatoo Squid
+                        </div>
+                        <div class="species-selection-card species-2-evolved evolved" data-evolution-line="1" data-level="2">
+                            Sea Angel
+                        </div>
+                        <div class="species-selection-card species-2-evolved evolved" data-evolution-line="1" data-level="3">
+                            Vampire Squid
+                        </div>
                     </div>
                 </div>
             </div>
@@ -248,7 +366,7 @@
                     class="btn-action"
                     id="btn-action"
                 >
-                    <span>Action</span>
+                    <span>X</span>
                 </button>
             </div>
             <div class="logs"></div>
@@ -260,8 +378,8 @@
                 <div class="player-nickname"></div>
             </div>
             <div class="death-screen">
-                <h2>You're Dead!</h2>
-                <button class="restart-button">Restart Game</button>
+                <h2>You died!</h2>
+                <button class="restart-button">Try again</button>
             </div>
         </div>
     </body>

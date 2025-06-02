@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const nicknameInput = document.querySelector('.nickname-input');
     if (nicknameInput) {
       nicknameInput.value = nickname;
+      document.querySelector('.continue-button').disabled = false;
     }
   }
 });
@@ -32,18 +33,40 @@ const keysPressed = {
   Space: false,
 };
 
+// Handle nickname input
+const nicknameInput = document.querySelector('.nickname-input');
+const continueButton = document.querySelector('.continue-button');
 
+// Initially disable continue button
+continueButton.disabled = true;
+
+nicknameInput.addEventListener('input', (e) => {
+  const nickname = e.target.value.trim();
+  continueButton.disabled = !nickname;
+});
+
+// Handle continue button click
+continueButton.addEventListener('click', () => {
+  const nickname = nicknameInput.value.trim();
+  if (nickname) {
+    // Hide the game title with animation
+    document.querySelector('.game-title').classList.add('hidden');
+    
+    // Hide nickname step with animation
+    document.querySelector('.nickname-step').classList.add('hidden');
+    
+    // Show species step with animation after a small delay
+    requestAnimationFrame(() => {
+      document.querySelector('.species-step').classList.add('visible');
+    });
+  }
+});
+
+// Handle species selection
 document.querySelectorAll(".species-selection-card").forEach(card => {
   card.addEventListener("click", (e) => {
     const evolutionLine = Number(card.dataset.evolutionLine);
-    
-    const nicknameInput = document.querySelector(".nickname-input");
     const nickname = nicknameInput.value.trim();
-    
-    if (!nickname) {
-      nicknameInput.focus();
-      return;
-    }
 
     game.ws = initializeWebSocket({ 
       evolution_line: evolutionLine,
@@ -82,17 +105,36 @@ document.querySelectorAll(".species-selection-card").forEach(card => {
     initializeControls(getComputedStyle(card).backgroundColor, nickname);
     showActiveSpecies(card);
 
-    document.querySelector(".species-selection").style.display = "none";
+    // Hide species selection with fade out
+    const speciesSelection = document.querySelector(".species-selection");
+    speciesSelection.style.opacity = "0";
+    speciesSelection.addEventListener('transitionend', () => {
+      speciesSelection.style.display = "none";
+    }, { once: true });
   });
 });
 
-// Add restart button handler
+// Update restart button handler
 document.querySelector(".restart-button").addEventListener("click", () => {
   // Hide death screen
   document.querySelector(".death-screen").style.display = "none";
   
-  // Show species selection
-  document.querySelector(".species-selection").style.display = "flex";
+  // Show and reset game title
+  const gameTitle = document.querySelector('.game-title');
+  gameTitle.classList.remove('hidden');
+  
+  // Reset and show species selection
+  const speciesSelection = document.querySelector(".species-selection");
+  speciesSelection.style.removeProperty('opacity');
+  speciesSelection.style.display = "flex";
+  
+  // Reset steps
+  document.querySelector(".nickname-step").classList.remove('hidden');
+  document.querySelector(".species-step").classList.remove('visible');
+  
+  // Reset nickname input
+  document.querySelector(".nickname-input").value = "";
+  document.querySelector(".continue-button").disabled = true;
   
   // Close WebSocket connection if it exists
   if (game.ws) {
@@ -105,15 +147,15 @@ function initializeControls(color, nickname) {
   // initialize joystick
   game.joystick = new JoystickController.default(
     {
-      radius: 100,
-      joystickRadius: 40,
+      radius: 80,
+      joystickRadius: 30,
       maxRange: 50,
       containerClass: "joystick-container",
       controllerClass: "joystick-controller",
       opacity: 0.8,
       level: 10,
       x: "30%",
-      y: "50%",
+      y: "30%",
     },
     ({ leveledX, leveledY }) => {
       joystickInput.x = leveledX / 10;
