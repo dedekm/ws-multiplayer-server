@@ -1,4 +1,6 @@
-const game = {}
+const game = {
+  evolutionCount: 0
+}
 
 // Check for nickname in URL parameters when page loads
 document.addEventListener('DOMContentLoaded', () => {
@@ -116,6 +118,9 @@ document.querySelectorAll(".species-selection-card").forEach(card => {
 
 // Update restart button handler
 document.querySelector(".restart-button").addEventListener("click", () => {
+  // Reset evolution count
+  game.evolutionCount = 0;
+
   // Hide death screen
   document.querySelector(".death-screen").style.display = "none";
   
@@ -135,6 +140,15 @@ document.querySelector(".restart-button").addEventListener("click", () => {
   // Reset nickname input
   document.querySelector(".nickname-input").value = "";
   document.querySelector(".continue-button").disabled = true;
+
+  // Reset all evolution cards to initial state
+  document.querySelectorAll('.species-selection-card').forEach(card => {
+    if (card.dataset.level === "1") {
+      card.style.display = 'flex';
+    } else {
+      card.style.display = 'none';
+    }
+  });
   
   // Close WebSocket connection if it exists
   if (game.ws) {
@@ -226,20 +240,25 @@ function initializeControls(color, nickname) {
 }
 
 function handleEvolution(evolutionLine) {
-  // Hide the level 1 card
-  const level1Card = document.querySelector(`.species-selection-card[data-evolution-line="${evolutionLine}"][data-level="1"]`);
-  if (level1Card) {
-    level1Card.style.display = 'none';
+  game.evolutionCount++;
+
+  // Hide the previous level card
+  const currentLevel = game.evolutionCount + 1;
+  const previousLevel = currentLevel - 1;
+  
+  const previousCard = document.querySelector(`.species-selection-card[data-evolution-line="${evolutionLine}"][data-level="${previousLevel}"]`);
+  if (previousCard) {
+    previousCard.style.display = 'none';
   }
 
-  // Show the level 2 card
-  const level2Card = document.querySelector(`.species-selection-card[data-evolution-line="${evolutionLine}"][data-level="2"]`);
-  if (level2Card) {
-    level2Card.style.display = 'flex';
+  // Show the next level card
+  const nextCard = document.querySelector(`.species-selection-card[data-evolution-line="${evolutionLine}"][data-level="${currentLevel}"]`);
+  if (nextCard) {
+    nextCard.style.display = 'flex';
     // Update the action button color to match the evolved form
-    document.querySelector(".controls-container .btn-action").style.backgroundColor = getComputedStyle(level2Card).backgroundColor;
+    document.querySelector(".controls-container .btn-action").style.backgroundColor = getComputedStyle(nextCard).backgroundColor;
     // Update the active species card
-    showActiveSpecies(level2Card);
+    showActiveSpecies(nextCard);
   }
 }
 
