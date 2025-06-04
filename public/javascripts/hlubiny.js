@@ -95,6 +95,9 @@ document.querySelectorAll(".species-selection-card").forEach(card => {
           console.log("evolved");
           handleEvolution(evolutionLine);
           break;
+        case "game_over":
+          restartGame();
+          break;
         case "death":
           console.log("death");
           handleDeath();
@@ -117,45 +120,7 @@ document.querySelectorAll(".species-selection-card").forEach(card => {
 });
 
 // Update restart button handler
-document.querySelector(".restart-button").addEventListener("click", () => {
-  // Reset evolution count
-  game.evolutionCount = 0;
-
-  // Hide death screen
-  document.querySelector(".death-screen").style.display = "none";
-  
-  // Show and reset game title
-  const gameTitle = document.querySelector('.game-title');
-  gameTitle.classList.remove('hidden');
-  
-  // Reset and show species selection
-  const speciesSelection = document.querySelector(".species-selection");
-  speciesSelection.style.removeProperty('opacity');
-  speciesSelection.style.display = "flex";
-  
-  // Reset steps
-  document.querySelector(".nickname-step").classList.remove('hidden');
-  document.querySelector(".species-step").classList.remove('visible');
-  
-  // Reset nickname input
-  document.querySelector(".nickname-input").value = "";
-  document.querySelector(".continue-button").disabled = true;
-
-  // Reset all evolution cards to initial state
-  document.querySelectorAll('.species-selection-card').forEach(card => {
-    if (card.dataset.level === "1") {
-      card.style.display = 'flex';
-    } else {
-      card.style.display = 'none';
-    }
-  });
-  
-  // Close WebSocket connection if it exists
-  if (game.ws) {
-    game.ws.close();
-    game.ws = null;
-  }
-});
+document.querySelector(".restart-button").addEventListener("click", restartGame);
 
 function initializeControls(color, nickname) {
   // initialize joystick
@@ -325,6 +290,53 @@ function updateAbilityCharge(charge) {
   const btnAction = document.getElementById("btn-action");
   const height = Math.max(0, Math.min(100, charge * 100));
   btnAction.style.setProperty('--charge-height', `${height}%`);
+}
+
+function restartGame() {
+  // Reset evolution count
+  game.evolutionCount = 0;
+
+  // Hide death screen
+  document.querySelector(".death-screen").style.display = "none";
+  
+  // Show and reset game title
+  const gameTitle = document.querySelector('.game-title');
+  gameTitle.classList.remove('hidden');
+  
+  // Reset and show species selection
+  const speciesSelection = document.querySelector(".species-selection");
+  speciesSelection.style.removeProperty('opacity');
+  speciesSelection.style.display = "flex";
+  
+  // Reset steps
+  document.querySelector(".nickname-step").classList.remove('hidden');
+  document.querySelector(".species-step").classList.remove('visible');
+  
+  // Reset all evolution cards to initial state
+  document.querySelectorAll('.species-selection-card').forEach(card => {
+    if (card.dataset.level === "1") {
+      card.style.display = 'flex';
+    } else {
+      card.style.display = 'none';
+    }
+  });
+
+  // Hide game elements
+  document.querySelector(".controls-container").style.display = "none";
+  document.querySelector(".player-info").style.display = "none";
+  document.querySelector(".active-species-container").style.display = "none";
+  
+  // Remove joystick if it exists
+  if (game.joystick) {
+    game.joystick.destroy();
+    game.joystick = null;
+  }
+  
+  // Close WebSocket connection if it exists
+  if (game.ws) {
+    game.ws.close();
+    game.ws = null;
+  }
 }
 
 document.addEventListener("contextmenu", function (e) {
