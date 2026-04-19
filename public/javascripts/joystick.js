@@ -19,9 +19,21 @@ function onMessage(msg) {
     case "set_color":
       setColor(msg.color);
       break;
+    case "failure":
+      showFailure();
+      break;
     default:
       console.log("unhandled event:", msg.event);
   }
+}
+
+function showFailure() {
+  if (window.gameWs) {
+    window.gameWs.close();
+    window.gameWs = null;
+  }
+  document.getElementById("game-screen").style.display = "none";
+  document.getElementById("failure-screen").style.display = "flex";
 }
 
 function setColor(hex) {
