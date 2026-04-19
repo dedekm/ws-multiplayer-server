@@ -14,9 +14,5 @@ class PlayersManager {
   get(id) {
     return this.players[id];
   }
-
-  getAll() {
-    return this.players;
-  }
 }
 module.exports = PlayersManager;
