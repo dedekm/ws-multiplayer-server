@@ -3,8 +3,8 @@ class PlayersManager {
     this.players = {};
   }
 
-  add(id, ws) {
-    this.players[id] = ws;
+  add(id, ws, data) {
+    this.players[id] = { ws, data };
   }
 
   remove(id) {
@@ -13,6 +13,10 @@ class PlayersManager {
 
   get(id) {
     return this.players[id];
+  }
+
+  all() {
+    return Object.entries(this.players);
   }
 }
 module.exports = PlayersManager;

@@ -192,6 +192,39 @@ test("invalid JSON does not crash the socket", async (t) => {
   await close(game);
 });
 
+test("reconnecting game replays create for existing players", async (t) => {
+  delete process.env.GAME_TOKEN;
+  const { server, url } = await startServer();
+  t.after(() => server.close());
+
+  const game1 = new WebSocket(url + "/?game");
+  await open(game1);
+
+  const player = new WebSocket(url + "/");
+  await open(player);
+  player.send(JSON.stringify({ event: "create", data: { team: 3, name: "alice" } }));
+  const created = await nextMessage(game1);
+
+  await close(game1);
+
+  const game2 = new WebSocket(url + "/?game");
+  const replayedP = nextMessage(game2);
+  await open(game2);
+  const replayed = await replayedP;
+  assert.equal(replayed.event, "create");
+  assert.equal(replayed.id, created.id);
+  assert.equal(replayed.team, 3);
+  assert.equal(replayed.name, "alice");
+
+  player.send(JSON.stringify({ event: "update", input: { x: 0.2 } }));
+  const upd = await nextMessage(game2);
+  assert.equal(upd.event, "update");
+  assert.equal(upd.id, created.id);
+
+  await close(player);
+  await close(game2);
+});
+
 test("new game connection replaces the old one", async (t) => {
   delete process.env.GAME_TOKEN;
   const { server, url } = await startServer();

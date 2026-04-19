@@ -38,6 +38,11 @@ function setupWebSocket(server) {
       gameWs = ws;
       logGame("game connected");
 
+      for (const [id, { data }] of players.all()) {
+        logGame("replaying create for %s", id);
+        ws.send(JSON.stringify({ event: "create", id, ...data }));
+      }
+
       ws.on("close", () => {
         logGame("game disconnected");
         if (gameWs === ws) gameWs = null;
@@ -53,11 +58,12 @@ function setupWebSocket(server) {
         }
 
         if (!message || !message.id) return;
-        logGame("→ player %s: %o", message.id, message);
 
         const { id, ...messageWithoutId } = message;
-        const player = players.get(id);
-        if (canSend(player)) player.send(JSON.stringify(messageWithoutId));
+        logGame("→ player %s: %o", message.id, messageWithoutId);
+
+        const entry = players.get(id);
+        if (entry && canSend(entry.ws)) entry.ws.send(JSON.stringify(messageWithoutId));
       });
     } else {
       const id = crypto.randomUUID();
@@ -80,7 +86,7 @@ function setupWebSocket(server) {
               logPlayer("%s: duplicate create ignored", id);
               return;
             }
-            players.add(id, ws);
+            players.add(id, ws, message.data);
             logPlayer("%s: created", id);
 
             if (canSend(gameWs)) {
