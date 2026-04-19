@@ -1,45 +1,68 @@
-let currentInput = {
-  x: 0,
-  y: 0,
-  action: false
-};
+let currentInput = { x: 0, y: 0 };
+const joystickInput = { x: 0, y: 0 };
+const keysPressed = { ArrowLeft: false, ArrowRight: false, ArrowUp: false, ArrowDown: false };
 
-const joystickInput = {
-  x: 0,
-  y: 0,
-};
+const PING_COOLDOWN = 3000;
+let pingReady = true;
 
-const keysPressed = {
-  ArrowLeft: false,
-  ArrowRight: false,
-  ArrowUp: false,
-  ArrowDown: false,
-  Space: false,
-};
+function joinGame() {
+  window.gameWs = initializeWebSocket({}, onMessage);
 
+  document.getElementById("join-screen").style.display = "none";
+  document.getElementById("game-screen").style.display = "flex";
 
-function selectTeam(team) {
-  window.gameWs = initializeWebSocket({ team: team });
-
-  const teamSelection = document.querySelector(".team-selection");
-  const color = team === 1 ? "red" : "blue";
-  teamSelection.remove();
-
-  initializeControls(color);
+  initControls();
 }
 
-function initializeControls(color) {
-  // initialize joystick
-  const joystick = new JoystickController.default(
+function onMessage(msg) {
+  switch (msg.event) {
+    case "set_color":
+      setColor(msg.color);
+      break;
+    default:
+      console.log("unhandled event:", msg.event);
+  }
+}
+
+function setColor(hex) {
+  const dot = document.getElementById("color-dot");
+  dot.style.background = hex;
+}
+
+function sendPing() {
+  if (!pingReady || !window.gameWs) return;
+  window.gameWs.send(JSON.stringify({ event: "update", input: { ping: true } }));
+
+  pingReady = false;
+  const btn = document.getElementById("btn-ping");
+  btn.disabled = true;
+
+  let remaining = PING_COOLDOWN / 1000;
+  btn.textContent = `Ping (${remaining}s)`;
+  const interval = setInterval(() => {
+    remaining--;
+    if (remaining > 0) {
+      btn.textContent = `Ping (${remaining}s)`;
+    } else {
+      clearInterval(interval);
+      btn.textContent = "Ping";
+      btn.disabled = false;
+      pingReady = true;
+    }
+  }, 1000);
+}
+
+function initControls() {
+  const joystickArea = document.getElementById("joystick-area");
+
+  new JoystickController.default(
     {
-      radius: 100,
-      joystickRadius: 40,
-      maxRange: 50,
-      containerClass: "joystick-container",
-      controllerClass: "joystick-controller",
-      opacity: 0.8,
+      radius: 80,
+      joystickRadius: 32,
+      maxRange: 45,
+      opacity: 0.7,
       level: 10,
-      x: "30%",
+      x: "50%",
       y: "50%",
     },
     ({ leveledX, leveledY }) => {
@@ -48,66 +71,38 @@ function initializeControls(color) {
     }
   );
 
-  // show & colorize action button
-  document.querySelector(".controls-container").style.display = "flex";
-  document.querySelector(".controls-container .btn-action").style.backgroundColor = color;
-
-  // keep keyboard controls as fallback
   document.addEventListener("keydown", (e) => {
-    if (e.code in keysPressed) {
-      keysPressed[e.code] = true;
-    }
+    if (e.code in keysPressed) keysPressed[e.code] = true;
   });
-
   document.addEventListener("keyup", (e) => {
-    if (e.code in keysPressed) {
-      keysPressed[e.code] = false;
-    }
+    if (e.code in keysPressed) keysPressed[e.code] = false;
   });
 
-  const btnAction = document.getElementById("btn-action");
-  btnAction.addEventListener("mousedown", (e) => {
-    keysPressed["Space"] = true;
-  });
-  btnAction.addEventListener("mouseup", (e) => {
-    keysPressed["Space"] = false;
-  });
-
-  setInterval(() => {
-    const input = {
-      x: joystickInput.x,
-      y: joystickInput.y,
-      action: false,
-    };
-
-    if (keysPressed["ArrowLeft"]) input.x = 1;
-    if (keysPressed["ArrowRight"]) input.x = -1;
-    if (keysPressed["ArrowUp"]) input.y = 1;
-    if (keysPressed["ArrowDown"]) input.y = -1;
-    if (keysPressed["Space"]) input.action = true;
-
-    sendInput(input);
-  }, 1000 / 30);
+  setInterval(sendInput, 1000 / 30);
 }
 
-function sendInput(input) {
-  const inputDiff = {};
+function sendInput() {
+  const kbX = (keysPressed.ArrowRight ? 1 : 0) - (keysPressed.ArrowLeft ? 1 : 0);
+  const kbY = (keysPressed.ArrowUp ? 1 : 0) - (keysPressed.ArrowDown ? 1 : 0);
 
-  Object.keys(input).forEach((key) => {
-    if (currentInput[key] !== input[key]) inputDiff[key] = input[key];
-  });
+  const input = {
+    x: kbX !== 0 ? kbX : joystickInput.x,
+    y: kbY !== 0 ? kbY : joystickInput.y,
+  };
 
-  if (Object.keys(inputDiff).length !== 0 && window.gameWs) {
-    window.gameWs.send(JSON.stringify({
-      event: "update",
-      input: inputDiff
-    }));
+  const diff = {};
+  for (const key of Object.keys(input)) {
+    if (currentInput[key] !== input[key]) diff[key] = input[key];
+  }
+
+  if (Object.keys(diff).length > 0 && window.gameWs) {
+    window.gameWs.send(JSON.stringify({ event: "update", input: diff }));
   }
 
   currentInput = input;
 }
 
-document.addEventListener("contextmenu", function (e) {
-  e.preventDefault()
-  e.stopPropagation()
+document.addEventListener("contextmenu", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
 });

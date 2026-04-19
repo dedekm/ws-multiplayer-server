@@ -1,88 +1,118 @@
+const crypto = require("crypto");
 const WebSocket = require("ws");
 const PlayersManager = require("../utils/players_manager");
+
+const logConn = require("debug")("ws-multiplayer-server:conn");
+const logGame = require("debug")("ws-multiplayer-server:game");
+const logPlayer = require("debug")("ws-multiplayer-server:player");
+
+function canSend(ws) {
+  return ws && ws.readyState === WebSocket.OPEN;
+}
 
 function setupWebSocket(server) {
   const wss = new WebSocket.Server({ server });
 
-  let gameWs;
+  let gameWs = null;
   const players = new PlayersManager();
 
   wss.on("connection", (ws, req) => {
     const url = new URL(req.url, "http://localhost");
     const params = Object.fromEntries(url.searchParams);
 
-    if (params.game) {
-      console.log("main game connected");
+    if ("game" in params) {
+      const gameToken = process.env.GAME_TOKEN || "";
+      if (gameToken && params.game !== gameToken) {
+        logConn("rejected game connection: bad token");
+        ws.close(1008, "invalid game token");
+        return;
+      }
+      if (!gameToken) {
+        logConn("warning: GAME_TOKEN is not set — game channel is unauthenticated");
+      }
+      if (canSend(gameWs)) {
+        logGame("replacing existing game connection");
+        gameWs.close(1000, "replaced by new game connection");
+      }
+
       gameWs = ws;
+      logGame("game connected");
 
       ws.on("close", () => {
-        console.log("main game disconnected");
+        logGame("game disconnected");
+        if (gameWs === ws) gameWs = null;
       });
 
       ws.on("message", (rawMessage) => {
-        const message = JSON.parse(rawMessage);
-
-        if (message.id) {
-          console.log("message from server:", message);
-
-          const { id, ...messageWithoutId } = message;
-          const player = players.get(id);
-          if (player) player.send(JSON.stringify(messageWithoutId));
+        let message;
+        try {
+          message = JSON.parse(rawMessage);
+        } catch (e) {
+          logGame("invalid JSON from game: %s", e.message);
+          return;
         }
+
+        if (!message || !message.id) return;
+        logGame("→ player %s: %o", message.id, message);
+
+        const { id, ...messageWithoutId } = message;
+        const player = players.get(id);
+        if (canSend(player)) player.send(JSON.stringify(messageWithoutId));
       });
     } else {
-      const id = Math.random().toString(36).substring(2, 15);
+      const id = crypto.randomUUID();
+      logConn("player %s connected", id);
 
       ws.on("message", (rawMessage) => {
+        let message;
         try {
-          const message = JSON.parse(rawMessage);
-
-          console.log("message from player:", id, message);
-
-          switch (message.event) {
-            case "create":
-              players.add(id, ws);
-              console.log("player", id, "created");
-              
-              if (gameWs) {
-                gameWs.send(JSON.stringify({
-                  event: "create",
-                  id: id,
-                  ...message.data
-                }));
-              }
-              break;
-            case "update":
-              console.log("player", id, "updated");
-
-              if (gameWs) {
-                gameWs.send(JSON.stringify({
-                  event: "update",
-                  id: id,
-                  ...message.input
-                }));
-              }
-              break;
-          }
+          message = JSON.parse(rawMessage);
         } catch (e) {
-          console.error("error", e);
+          logPlayer("%s: invalid JSON: %s", id, e.message);
+          return;
+        }
+
+        if (!message || typeof message.event !== "string") return;
+
+        switch (message.event) {
+          case "create":
+            if (players.get(id)) {
+              logPlayer("%s: duplicate create ignored", id);
+              return;
+            }
+            players.add(id, ws);
+            logPlayer("%s: created", id);
+
+            if (canSend(gameWs)) {
+              gameWs.send(JSON.stringify({
+                event: "create",
+                id: id,
+                ...message.data
+              }));
+            }
+            break;
+          case "update":
+            if (!players.get(id)) return;
+            if (canSend(gameWs)) {
+              gameWs.send(JSON.stringify({
+                event: "update",
+                id: id,
+                ...message.input
+              }));
+            }
+            break;
+          default:
+            logPlayer("%s: unknown event %s", id, message.event);
         }
       });
 
       ws.on("close", () => {
         if (players.get(id)) {
-          if (gameWs) {
-            gameWs.send(
-              JSON.stringify({
-                event: "destroy",
-                id: id
-              })
-            );
+          if (canSend(gameWs)) {
+            gameWs.send(JSON.stringify({ event: "destroy", id: id }));
           }
-
           players.remove(id);
-
-          console.log("player", id, "disconnected");
+          logPlayer("%s: disconnected", id);
         }
       });
     }

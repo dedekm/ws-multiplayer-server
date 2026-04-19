@@ -4,121 +4,24 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>WS control test</title>
-        <script src="https://cdn.statically.io/gh/cyrus2281/joystick-controller/main/dist/umd/joystick-controller.min.js"></script>
+        <link rel="stylesheet" href="stylesheets/main.css" />
+        <script src="https://unpkg.com/joystick-controller/dist/joystick-controller.umd.js"></script>
         <script src="javascripts/base.js" defer></script>
         <script src="javascripts/joystick.js" defer></script>
-        <style>
-            body {
-                user-select: none;
-                -webkit-user-select: none;
-                -moz-user-select: none;
-                -ms-user-select: none;
-                touch-action: manipulation;
-                overflow: hidden;
-                margin: 0;
-                padding: 0;
-                height: 100vh;
-                display: flex;
-                flex-direction: column;
-                background-color: #1a1a1a;
-            }
-            .game-container {
-                flex: 1;
-                position: relative;
-                width: 100%;
-                background-color: #222;
-            }
-            .team-selection {
-                position: fixed;
-                left: 50%;
-                top: 50%;
-                transform: translate(-50%, -50%);
-                display: flex;
-                gap: 40px;
-            }
-            .team-card {
-                width: 200px;
-                height: 300px;
-                border-radius: 15px;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                cursor: pointer;
-                transition: transform 0.3s;
-                color: white;
-                font-size: 24px;
-                font-weight: bold;
-            }
-            .team-card:hover {
-                transform: scale(1.05);
-            }
-            .team-1 {
-                background-color: #ff4444;
-            }
-            .team-2 {
-                background-color: #4444ff;
-            }
-            .controls-container {
-                display: none;
-                position: fixed;
-                left: 80%;
-                top: 50%;
-                transform: translate(-50%, -50%);
-                align-items: center;
-                gap: 40px;
-            }
-            .btn-action {
-                width: 80px;
-                height: 80px;
-                font-size: 16px;
-                border-radius: 50%;
-                border: none;
-                background-color: #ff4444;
-                color: white;
-                cursor: pointer;
-                transition: all 0.3s;
-                text-transform: uppercase;
-                font-weight: bold;
-                letter-spacing: 1px;
-                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-            }
-            .btn-action:hover {
-                background-color: #ff2222;
-                transform: scale(1.05);
-                box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
-            }
-            .btn-action:active {
-                transform: scale(0.95);
-                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-            }
-            .logs {
-                position: fixed;
-                top: 10px;
-                left: 10px;
-                color: white;
-                font-family: monospace;
-            }
-        </style>
     </head>
     <body>
-        <div class="game-container">
-            <div class="team-selection">
-                <div class="team-card team-1" onclick="selectTeam(1)">
-                    Team Red
-                </div>
-                <div class="team-card team-2" onclick="selectTeam(2)">
-                    Team Blue
-                </div>
+        <div id="join-screen">
+            <button id="btn-join" onclick="joinGame()">Connect</button>
+        </div>
+
+        <div id="game-screen">
+            <div id="color-dot"></div>
+
+            <div id="joystick-area"></div>
+
+            <div id="bottom-bar">
+                <button id="btn-ping" onclick="sendPing()">Ping</button>
             </div>
-            <div class="controls-container">
-                <button
-                    class="btn-action"
-                    id="btn-action"
-                >
-                </button>
-            </div>
-            <div class="logs"></div>
         </div>
     </body>
 </html>
