@@ -1,5 +1,6 @@
 function initializeWebSocket(data = {}, onMessage = null) {
-  const ws = new WebSocket("ws://" + location.host + "/");
+  const protocol = location.protocol === "https:" ? "wss:" : "ws:";
+  const ws = new WebSocket(protocol + "//" + location.host + "/");
 
   ws.onopen = () => {
     console.log("connected to server");
