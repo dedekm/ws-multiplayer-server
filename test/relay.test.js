@@ -1,4 +1,5 @@
 const http = require("http");
+const net = require("net");
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const WebSocket = require("ws");
@@ -245,6 +246,171 @@ test("new game connection replaces the old one", async (t) => {
   player.send(JSON.stringify({ event: "create", data: { team: 1 } }));
   const msg = await nextMessage(game2);
   assert.equal(msg.event, "create");
+
+  await close(player);
+  await close(game2);
+});
+
+function rawUpgrade(server, target) {
+  const { port } = server.address();
+  return new Promise((resolve, reject) => {
+    const socket = net.connect(port, "127.0.0.1");
+    let buffered = Buffer.alloc(0);
+    socket.once("error", reject);
+    const onData = (chunk) => {
+      buffered = Buffer.concat([buffered, chunk]);
+      const end = buffered.indexOf("\r\n\r\n");
+      if (end === -1) return;
+      socket.off("data", onData);
+      const head = buffered.subarray(0, end).toString();
+      if (!head.startsWith("HTTP/1.1 101")) {
+        socket.destroy();
+        reject(new Error(`unexpected response: ${head}`));
+        return;
+      }
+      resolve({ socket, rest: buffered.subarray(end + 4) });
+    };
+    socket.on("data", onData);
+    socket.write(
+      `GET ${target} HTTP/1.1\r\n` +
+      "Host: 127.0.0.1\r\n" +
+      "Upgrade: websocket\r\n" +
+      "Connection: Upgrade\r\n" +
+      "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n" +
+      "Sec-WebSocket-Version: 13\r\n" +
+      "\r\n"
+    );
+  });
+}
+
+function readBytes(socket, initial, count) {
+  return new Promise((resolve, reject) => {
+    let buffered = initial;
+    if (buffered.length >= count) return resolve(buffered);
+    const cleanup = () => { socket.off("data", onData); socket.off("close", onClose); };
+    const onData = (chunk) => {
+      buffered = Buffer.concat([buffered, chunk]);
+      if (buffered.length >= count) { cleanup(); resolve(buffered); }
+    };
+    const onClose = () => { cleanup(); reject(new Error("socket closed early")); };
+    socket.on("data", onData);
+    socket.on("close", onClose);
+  });
+}
+
+async function assertRelayStillWorks(url) {
+  const game = new WebSocket(url + "/?game");
+  await open(game);
+  const player = new WebSocket(url + "/");
+  await open(player);
+  player.send(JSON.stringify({ event: "create", data: {} }));
+  const msg = await nextMessage(game);
+  assert.equal(msg.event, "create");
+  await close(player);
+  await close(game);
+}
+
+test("malformed request URL is rejected without crashing the relay", async (t) => {
+  delete process.env.GAME_TOKEN;
+  const { server, url } = await startServer();
+  t.after(() => server.close());
+
+  const { socket, rest } = await rawUpgrade(server, "http://[");
+  const bytes = await readBytes(socket, rest, 4);
+  assert.equal(bytes[0], 0x88);
+  assert.equal(bytes[2], 0x03);
+  assert.equal(bytes[3], 0xf0);
+  // A rejected socket must still have an error listener.
+  const closed = new Promise((resolve) => socket.once("close", resolve));
+  socket.write(Buffer.from([0x81, 0x02, 0x68, 0x69]));
+  await closed;
+
+  await assertRelayStillWorks(url);
+});
+
+for (const target of ["/", "/?game"]) {
+  test(`protocol error on a socket (${target}) does not crash the relay`, async (t) => {
+    delete process.env.GAME_TOKEN;
+    const { server, url } = await startServer();
+    t.after(() => server.close());
+
+    const { socket, rest } = await rawUpgrade(server, target);
+    // Unmasked client text frame violates the protocol.
+    socket.write(Buffer.from([0x81, 0x02, 0x68, 0x69]));
+    // Only an early close without a close frame is tolerated.
+    const bytes = await readBytes(socket, rest, 1).catch(() => null);
+    if (bytes) assert.equal(bytes[0], 0x88);
+    socket.destroy();
+
+    await assertRelayStillWorks(url);
+  });
+}
+
+test("player cannot override event or id in update", async (t) => {
+  delete process.env.GAME_TOKEN;
+  const { server, url } = await startServer();
+  t.after(() => server.close());
+
+  const game = new WebSocket(url + "/?game");
+  await open(game);
+  const player = new WebSocket(url + "/");
+  await open(player);
+
+  player.send(JSON.stringify({ event: "create", data: {} }));
+  const created = await nextMessage(game);
+
+  player.send(JSON.stringify({ event: "update", input: { event: "destroy", id: "spoofed", x: 0.3 } }));
+  const upd = await nextMessage(game);
+  assert.equal(upd.event, "update");
+  assert.equal(upd.id, created.id);
+  assert.equal(upd.x, 0.3);
+
+  await close(player);
+  await close(game);
+});
+
+test("player cannot override event or id in create", async (t) => {
+  delete process.env.GAME_TOKEN;
+  const { server, url } = await startServer();
+  t.after(() => server.close());
+
+  const game = new WebSocket(url + "/?game");
+  await open(game);
+  const player = new WebSocket(url + "/");
+  await open(player);
+
+  player.send(JSON.stringify({ event: "create", data: { event: "destroy", id: "spoofed", name: "x" } }));
+  const msg = await nextMessage(game);
+  assert.equal(msg.event, "create");
+  assert.match(msg.id, /^[0-9a-f-]{36}$/);
+  assert.notEqual(msg.id, "spoofed");
+  assert.equal(msg.name, "x");
+
+  await close(player);
+  await close(game);
+});
+
+test("replayed create keeps the relay-assigned id", async (t) => {
+  delete process.env.GAME_TOKEN;
+  const { server, url } = await startServer();
+  t.after(() => server.close());
+
+  const game1 = new WebSocket(url + "/?game");
+  await open(game1);
+  const player = new WebSocket(url + "/");
+  await open(player);
+
+  player.send(JSON.stringify({ event: "create", data: { event: "destroy", id: "spoofed" } }));
+  const created = await nextMessage(game1);
+
+  await close(game1);
+
+  const game2 = new WebSocket(url + "/?game");
+  const replayedP = nextMessage(game2);
+  await open(game2);
+  const replayed = await replayedP;
+  assert.equal(replayed.event, "create");
+  assert.equal(replayed.id, created.id);
 
   await close(player);
   await close(game2);

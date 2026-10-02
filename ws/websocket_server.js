@@ -17,7 +17,18 @@ function setupWebSocket(server) {
   const players = new PlayersManager();
 
   wss.on("connection", (ws, req) => {
-    const url = new URL(req.url, "http://localhost");
+    ws.on("error", (err) => {
+      logConn("socket error: %s", err.message);
+    });
+
+    let url;
+    try {
+      url = new URL(req.url, "http://localhost");
+    } catch (e) {
+      logConn("rejected connection: invalid url %s", req.url);
+      ws.close(1008, "invalid url");
+      return;
+    }
     const params = Object.fromEntries(url.searchParams);
 
     if ("game" in params) {
@@ -40,7 +51,7 @@ function setupWebSocket(server) {
 
       for (const [id, { data }] of players.all()) {
         logGame("replaying create for %s", id);
-        ws.send(JSON.stringify({ event: "create", id, ...data }));
+        ws.send(JSON.stringify({ ...data, event: "create", id }));
       }
 
       ws.on("close", () => {
@@ -91,9 +102,9 @@ function setupWebSocket(server) {
 
             if (canSend(gameWs)) {
               gameWs.send(JSON.stringify({
+                ...message.data,
                 event: "create",
-                id: id,
-                ...message.data
+                id: id
               }));
             }
             break;
@@ -101,9 +112,9 @@ function setupWebSocket(server) {
             if (!players.get(id)) return;
             if (canSend(gameWs)) {
               gameWs.send(JSON.stringify({
+                ...message.input,
                 event: "update",
-                id: id,
-                ...message.input
+                id: id
               }));
             }
             break;
