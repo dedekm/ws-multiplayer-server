@@ -5,9 +5,9 @@ const assert = require("node:assert/strict");
 const WebSocket = require("ws");
 const { setupWebSocket } = require("../ws/websocket_server");
 
-function startServer() {
+function startServer(options) {
   const server = http.createServer();
-  setupWebSocket(server);
+  setupWebSocket(server, options);
   return new Promise((resolve) => {
     server.listen(0, "127.0.0.1", () => {
       const { port } = server.address();
@@ -414,4 +414,57 @@ test("replayed create keeps the relay-assigned id", async (t) => {
 
   await close(player);
   await close(game2);
+});
+
+test("heartbeat terminates a player that never pongs and game gets destroy", { timeout: 2000 }, async (t) => {
+  delete process.env.GAME_TOKEN;
+  const { server, url } = await startServer({ heartbeatIntervalMs: 50 });
+  t.after(() => server.close());
+
+  const game = new WebSocket(url + "/?game");
+  await open(game);
+  const player = new WebSocket(url + "/", { autoPong: false });
+  await open(player);
+
+  player.send(JSON.stringify({ event: "create", data: { team: 1 } }));
+  const created = await nextMessage(game);
+
+  const playerClosed = nextClose(player);
+  const destroy = await nextMessage(game);
+  assert.equal(destroy.event, "destroy");
+  assert.equal(destroy.id, created.id);
+  await playerClosed;
+
+  await close(player);
+  await close(game);
+});
+
+test("heartbeat keeps a responsive player connected", { timeout: 2000 }, async (t) => {
+  delete process.env.GAME_TOKEN;
+  const { server, url } = await startServer({ heartbeatIntervalMs: 100 });
+  t.after(() => server.close());
+
+  const game = new WebSocket(url + "/?game");
+  await open(game);
+  const player = new WebSocket(url + "/");
+  let pings = 0;
+  player.on("ping", () => { pings++; });
+  await open(player);
+
+  player.send(JSON.stringify({ event: "create", data: { team: 1 } }));
+  await nextMessage(game);
+
+  const received = [];
+  game.on("message", (raw) => received.push(JSON.parse(raw.toString())));
+
+  // Several heartbeat intervals pass (100 ms each).
+  await new Promise((resolve) => setTimeout(resolve, 550));
+
+  assert.ok(pings >= 3, `expected at least 3 pings, got ${pings}`);
+  assert.equal(player.readyState, WebSocket.OPEN);
+  assert.equal(game.readyState, WebSocket.OPEN);
+  assert.deepEqual(received, []);
+
+  await close(player);
+  await close(game);
 });

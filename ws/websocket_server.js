@@ -10,13 +10,33 @@ function canSend(ws) {
   return ws && ws.readyState === WebSocket.OPEN;
 }
 
-function setupWebSocket(server) {
+function setupWebSocket(server, { heartbeatIntervalMs = 15000 } = {}) {
   const wss = new WebSocket.Server({ server });
 
   let gameWs = null;
   const players = new PlayersManager();
 
+  // Heartbeat: a socket that did not answer the previous ping with a pong is
+  // terminated; terminate() fires the regular "close" handlers below.
+  const heartbeat = setInterval(() => {
+    for (const client of wss.clients) {
+      if (client.isAlive === false) {
+        logConn("terminating unresponsive socket");
+        client.terminate();
+        continue;
+      }
+      client.isAlive = false;
+      client.ping();
+    }
+  }, heartbeatIntervalMs);
+  heartbeat.unref();
+  wss.on("close", () => clearInterval(heartbeat));
+
   wss.on("connection", (ws, req) => {
+    ws.isAlive = true;
+    ws.on("pong", () => {
+      ws.isAlive = true;
+    });
     ws.on("error", (err) => {
       logConn("socket error: %s", err.message);
     });
