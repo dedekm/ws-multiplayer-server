@@ -154,6 +154,8 @@ function setupWebSocket(server, { heartbeatIntervalMs = 15000 } = {}) {
       });
     }
   });
+
+  return wss;
 }
 
 module.exports = { setupWebSocket };

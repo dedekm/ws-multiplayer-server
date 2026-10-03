@@ -5,15 +5,30 @@ const assert = require("node:assert/strict");
 const WebSocket = require("ws");
 const { setupWebSocket } = require("../ws/websocket_server");
 
-function startServer(options) {
+// Starts a relay on a free port and registers its teardown on `t`. Whether the test
+// passes, fails or times out, the teardown then drops every connection the relay has
+// accepted (websocket clients, raw sockets, half-finished handshakes), closes wss
+// (which clears the heartbeat interval) and waits for the HTTP server to close.
+async function startServer(t, options) {
   const server = http.createServer();
-  setupWebSocket(server, options);
-  return new Promise((resolve) => {
-    server.listen(0, "127.0.0.1", () => {
-      const { port } = server.address();
-      resolve({ server, url: `ws://127.0.0.1:${port}` });
-    });
-  });
+  const wss = setupWebSocket(server, options);
+  const rawSockets = [];
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const srv = { server, wss, rawSockets, url: `ws://127.0.0.1:${server.address().port}` };
+  t.after(() => stopServer(srv));
+  return srv;
+}
+
+async function stopServer({ server, wss, rawSockets }) {
+  for (const socket of rawSockets) socket.destroy();
+  for (const client of wss.clients) client.terminate();
+  // "close" fires once the last client is gone and runs the heartbeat clearInterval hook.
+  await new Promise((resolve) => wss.close(resolve));
+  const closed = new Promise((resolve) => server.close(resolve));
+  // A client still mid-handshake is not in wss.clients, and wss.close() removed the
+  // "upgrade" listener, so nothing would ever answer it and server.close() would wait forever.
+  server.closeAllConnections();
+  await closed;
 }
 
 function open(ws) {
@@ -46,8 +61,7 @@ function close(ws) {
 
 test("player create is relayed to game with id + data", async (t) => {
   delete process.env.GAME_TOKEN;
-  const { server, url } = await startServer();
-  t.after(() => server.close());
+  const { url } = await startServer(t);
 
   const game = new WebSocket(url + "/?game");
   await open(game);
@@ -67,8 +81,7 @@ test("player create is relayed to game with id + data", async (t) => {
 
 test("player update is relayed with same id", async (t) => {
   delete process.env.GAME_TOKEN;
-  const { server, url } = await startServer();
-  t.after(() => server.close());
+  const { url } = await startServer(t);
 
   const game = new WebSocket(url + "/?game");
   await open(game);
@@ -92,8 +105,7 @@ test("player update is relayed with same id", async (t) => {
 
 test("player disconnect sends destroy", async (t) => {
   delete process.env.GAME_TOKEN;
-  const { server, url } = await startServer();
-  t.after(() => server.close());
+  const { url } = await startServer(t);
 
   const game = new WebSocket(url + "/?game");
   await open(game);
@@ -113,8 +125,7 @@ test("player disconnect sends destroy", async (t) => {
 
 test("game → player targeted message routes by id", async (t) => {
   delete process.env.GAME_TOKEN;
-  const { server, url } = await startServer();
-  t.after(() => server.close());
+  const { url } = await startServer(t);
 
   const game = new WebSocket(url + "/?game");
   await open(game);
@@ -135,8 +146,7 @@ test("game → player targeted message routes by id", async (t) => {
 
 test("duplicate create is ignored", async (t) => {
   delete process.env.GAME_TOKEN;
-  const { server, url } = await startServer();
-  t.after(() => server.close());
+  const { url } = await startServer(t);
 
   const game = new WebSocket(url + "/?game");
   await open(game);
@@ -162,8 +172,7 @@ test("duplicate create is ignored", async (t) => {
 test("GAME_TOKEN rejects bad token", async (t) => {
   process.env.GAME_TOKEN = "secret123";
   t.after(() => { delete process.env.GAME_TOKEN; });
-  const { server, url } = await startServer();
-  t.after(() => server.close());
+  const { url } = await startServer(t);
 
   const bad = new WebSocket(url + "/?game=wrong");
   const code = await nextClose(bad);
@@ -176,8 +185,7 @@ test("GAME_TOKEN rejects bad token", async (t) => {
 
 test("invalid JSON does not crash the socket", async (t) => {
   delete process.env.GAME_TOKEN;
-  const { server, url } = await startServer();
-  t.after(() => server.close());
+  const { url } = await startServer(t);
 
   const game = new WebSocket(url + "/?game");
   await open(game);
@@ -195,8 +203,7 @@ test("invalid JSON does not crash the socket", async (t) => {
 
 test("reconnecting game replays create for existing players", async (t) => {
   delete process.env.GAME_TOKEN;
-  const { server, url } = await startServer();
-  t.after(() => server.close());
+  const { url } = await startServer(t);
 
   const game1 = new WebSocket(url + "/?game");
   await open(game1);
@@ -228,8 +235,7 @@ test("reconnecting game replays create for existing players", async (t) => {
 
 test("new game connection replaces the old one", async (t) => {
   delete process.env.GAME_TOKEN;
-  const { server, url } = await startServer();
-  t.after(() => server.close());
+  const { url } = await startServer(t);
 
   const game1 = new WebSocket(url + "/?game");
   await open(game1);
@@ -251,10 +257,11 @@ test("new game connection replaces the old one", async (t) => {
   await close(game2);
 });
 
-function rawUpgrade(server, target) {
-  const { port } = server.address();
+function rawUpgrade(srv, target) {
+  const { port } = srv.server.address();
   return new Promise((resolve, reject) => {
     const socket = net.connect(port, "127.0.0.1");
+    srv.rawSockets.push(socket);
     let buffered = Buffer.alloc(0);
     socket.once("error", reject);
     const onData = (chunk) => {
@@ -312,10 +319,9 @@ async function assertRelayStillWorks(url) {
 
 test("malformed request URL is rejected without crashing the relay", async (t) => {
   delete process.env.GAME_TOKEN;
-  const { server, url } = await startServer();
-  t.after(() => server.close());
+  const srv = await startServer(t);
 
-  const { socket, rest } = await rawUpgrade(server, "http://[");
+  const { socket, rest } = await rawUpgrade(srv, "http://[");
   const bytes = await readBytes(socket, rest, 4);
   assert.equal(bytes[0], 0x88);
   assert.equal(bytes[2], 0x03);
@@ -325,16 +331,15 @@ test("malformed request URL is rejected without crashing the relay", async (t) =
   socket.write(Buffer.from([0x81, 0x02, 0x68, 0x69]));
   await closed;
 
-  await assertRelayStillWorks(url);
+  await assertRelayStillWorks(srv.url);
 });
 
 for (const target of ["/", "/?game"]) {
   test(`protocol error on a socket (${target}) does not crash the relay`, async (t) => {
     delete process.env.GAME_TOKEN;
-    const { server, url } = await startServer();
-    t.after(() => server.close());
+    const srv = await startServer(t);
 
-    const { socket, rest } = await rawUpgrade(server, target);
+    const { socket, rest } = await rawUpgrade(srv, target);
     // Unmasked client text frame violates the protocol.
     socket.write(Buffer.from([0x81, 0x02, 0x68, 0x69]));
     // Only an early close without a close frame is tolerated.
@@ -342,14 +347,13 @@ for (const target of ["/", "/?game"]) {
     if (bytes) assert.equal(bytes[0], 0x88);
     socket.destroy();
 
-    await assertRelayStillWorks(url);
+    await assertRelayStillWorks(srv.url);
   });
 }
 
 test("player cannot override event or id in update", async (t) => {
   delete process.env.GAME_TOKEN;
-  const { server, url } = await startServer();
-  t.after(() => server.close());
+  const { url } = await startServer(t);
 
   const game = new WebSocket(url + "/?game");
   await open(game);
@@ -371,8 +375,7 @@ test("player cannot override event or id in update", async (t) => {
 
 test("player cannot override event or id in create", async (t) => {
   delete process.env.GAME_TOKEN;
-  const { server, url } = await startServer();
-  t.after(() => server.close());
+  const { url } = await startServer(t);
 
   const game = new WebSocket(url + "/?game");
   await open(game);
@@ -392,8 +395,7 @@ test("player cannot override event or id in create", async (t) => {
 
 test("replayed create keeps the relay-assigned id", async (t) => {
   delete process.env.GAME_TOKEN;
-  const { server, url } = await startServer();
-  t.after(() => server.close());
+  const { url } = await startServer(t);
 
   const game1 = new WebSocket(url + "/?game");
   await open(game1);
@@ -418,8 +420,7 @@ test("replayed create keeps the relay-assigned id", async (t) => {
 
 test("heartbeat terminates a player that never pongs and game gets destroy", { timeout: 2000 }, async (t) => {
   delete process.env.GAME_TOKEN;
-  const { server, url } = await startServer({ heartbeatIntervalMs: 50 });
-  t.after(() => server.close());
+  const { url } = await startServer(t, { heartbeatIntervalMs: 50 });
 
   const game = new WebSocket(url + "/?game");
   await open(game);
@@ -441,8 +442,7 @@ test("heartbeat terminates a player that never pongs and game gets destroy", { t
 
 test("heartbeat keeps a responsive player connected", { timeout: 2000 }, async (t) => {
   delete process.env.GAME_TOKEN;
-  const { server, url } = await startServer({ heartbeatIntervalMs: 100 });
-  t.after(() => server.close());
+  const { url } = await startServer(t, { heartbeatIntervalMs: 100 });
 
   const game = new WebSocket(url + "/?game");
   await open(game);
@@ -471,8 +471,7 @@ test("heartbeat keeps a responsive player connected", { timeout: 2000 }, async (
 
 test("oversized frame closes the player with 1009 and game gets destroy", { timeout: 2000 }, async (t) => {
   delete process.env.GAME_TOKEN;
-  const { server, url } = await startServer();
-  t.after(() => server.close());
+  const { url } = await startServer(t);
 
   const game = new WebSocket(url + "/?game");
   await open(game);
@@ -496,8 +495,7 @@ test("oversized frame closes the player with 1009 and game gets destroy", { time
 
 test("normal-sized create (~1 KB data) is still relayed unchanged", { timeout: 2000 }, async (t) => {
   delete process.env.GAME_TOKEN;
-  const { server, url } = await startServer();
-  t.after(() => server.close());
+  const { url } = await startServer(t);
 
   const game = new WebSocket(url + "/?game");
   await open(game);
