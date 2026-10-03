@@ -334,6 +334,26 @@ test("malformed request URL is rejected without crashing the relay", async (t) =
   await assertRelayStillWorks(srv.url);
 });
 
+test("bad GAME_TOKEN rejection leaves an error listener on the socket", async (t) => {
+  process.env.GAME_TOKEN = "secret";
+  t.after(() => { delete process.env.GAME_TOKEN; });
+  const srv = await startServer(t);
+
+  const { socket, rest } = await rawUpgrade(srv, "/?game=wrong");
+  const bytes = await readBytes(socket, rest, 4);
+  assert.equal(bytes[0], 0x88);
+  assert.equal(bytes[2], 0x03);
+  assert.equal(bytes[3], 0xf0);
+  // A rejected socket must still have an error listener.
+  const closed = new Promise((resolve) => socket.once("close", resolve));
+  socket.write(Buffer.from([0x81, 0x02, 0x68, 0x69]));
+  await closed;
+
+  // assertRelayStillWorks connects the game without a token, so GAME_TOKEN must be unset by now.
+  delete process.env.GAME_TOKEN;
+  await assertRelayStillWorks(srv.url);
+});
+
 for (const target of ["/", "/?game"]) {
   test(`protocol error on a socket (${target}) does not crash the relay`, async (t) => {
     delete process.env.GAME_TOKEN;
