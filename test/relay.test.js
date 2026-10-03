@@ -468,3 +468,48 @@ test("heartbeat keeps a responsive player connected", { timeout: 2000 }, async (
   await close(player);
   await close(game);
 });
+
+test("oversized frame closes the player with 1009 and game gets destroy", { timeout: 2000 }, async (t) => {
+  delete process.env.GAME_TOKEN;
+  const { server, url } = await startServer();
+  t.after(() => server.close());
+
+  const game = new WebSocket(url + "/?game");
+  await open(game);
+  const player = new WebSocket(url + "/");
+  await open(player);
+
+  player.send(JSON.stringify({ event: "create", data: { team: 1 } }));
+  const created = await nextMessage(game);
+
+  const playerClosed = nextClose(player);
+  player.send("x".repeat(4097));
+
+  const destroy = await nextMessage(game);
+  assert.equal(destroy.event, "destroy");
+  assert.equal(destroy.id, created.id);
+  assert.equal(await playerClosed, 1009);
+
+  await close(player);
+  await close(game);
+});
+
+test("normal-sized create (~1 KB data) is still relayed unchanged", { timeout: 2000 }, async (t) => {
+  delete process.env.GAME_TOKEN;
+  const { server, url } = await startServer();
+  t.after(() => server.close());
+
+  const game = new WebSocket(url + "/?game");
+  await open(game);
+  const player = new WebSocket(url + "/");
+  await open(player);
+
+  const blob = "a".repeat(1024);
+  player.send(JSON.stringify({ event: "create", data: { name: blob } }));
+  const msg = await nextMessage(game);
+  assert.equal(msg.event, "create");
+  assert.equal(msg.name, blob);
+
+  await close(player);
+  await close(game);
+});

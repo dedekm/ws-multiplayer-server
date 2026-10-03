@@ -6,12 +6,15 @@ const logConn = require("debug")("ws-multiplayer-server:conn");
 const logGame = require("debug")("ws-multiplayer-server:game");
 const logPlayer = require("debug")("ws-multiplayer-server:player");
 
+// Largest accepted message (ws sums fragments); above this it closes the socket with 1009.
+const MAX_PAYLOAD_BYTES = 4096;
+
 function canSend(ws) {
   return ws && ws.readyState === WebSocket.OPEN;
 }
 
 function setupWebSocket(server, { heartbeatIntervalMs = 15000 } = {}) {
-  const wss = new WebSocket.Server({ server });
+  const wss = new WebSocket.Server({ server, maxPayload: MAX_PAYLOAD_BYTES });
 
   let gameWs = null;
   const players = new PlayersManager();
