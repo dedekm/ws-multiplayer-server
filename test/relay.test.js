@@ -1,9 +1,16 @@
 const http = require("http");
 const net = require("net");
-const test = require("node:test");
+const baseTest = require("node:test");
 const assert = require("node:assert/strict");
 const WebSocket = require("ws");
 const { setupWebSocket } = require("../ws/websocket_server");
+
+// A test that waits forever must fail, not hang the run. `--test-timeout` is per file in
+// Node 22, so every test gets its own default timeout; explicit options still win.
+function test(name, options, fn) {
+  if (typeof options === "function") [options, fn] = [{}, options];
+  return baseTest(name, { timeout: 3000, ...options }, fn);
+}
 
 // Starts a relay on a free port and registers its teardown on `t`. Whether the test
 // passes, fails or times out, the teardown then drops every connection the relay has
@@ -175,6 +182,7 @@ test("GAME_TOKEN rejects bad token", async (t) => {
   const { url } = await startServer(t);
 
   const bad = new WebSocket(url + "/?game=wrong");
+  bad.on("error", () => {}); // a handshake reset then fails the close-code assertion below instead of throwing unhandled
   const code = await nextClose(bad);
   assert.equal(code, 1008);
 
