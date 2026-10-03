@@ -14,4 +14,12 @@ const server = app.listen(port, () => {
   debug(`server running on http://localhost:${port}`);
 });
 
+if (!process.env.GAME_TOKEN) {
+  console.warn(
+    "WARNING: GAME_TOKEN is not set. The game channel (/?game) is unauthenticated: " +
+      "anyone can take over the game connection. " +
+      "Set GAME_TOKEN to require /?game=<token>."
+  );
+}
+
 setupWebSocket(server);

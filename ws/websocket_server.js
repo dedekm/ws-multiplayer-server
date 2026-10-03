@@ -61,9 +61,6 @@ function setupWebSocket(server, { heartbeatIntervalMs = 15000 } = {}) {
         ws.close(1008, "invalid game token");
         return;
       }
-      if (!gameToken) {
-        logConn("warning: GAME_TOKEN is not set — game channel is unauthenticated");
-      }
       if (canSend(gameWs)) {
         logGame("replacing existing game connection");
         gameWs.close(1000, "replaced by new game connection");
