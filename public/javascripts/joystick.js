@@ -6,12 +6,13 @@ const PING_COOLDOWN = 3000;
 let pingReady = true;
 
 function joinGame() {
+  // Controls first: if they fail to initialise, no socket is opened and no "create" is sent.
+  initControls();
+
   window.gameWs = initializeWebSocket({}, onMessage);
 
   document.getElementById("join-screen").style.display = "none";
   document.getElementById("game-screen").style.display = "flex";
-
-  initControls();
 }
 
 function onMessage(msg) {
