@@ -1,4 +1,5 @@
 const express = require("express");
+const path = require("path");
 const { setupWebSocket } = require("./ws/websocket_server");
 const routes = require('./routes');
 
@@ -7,7 +8,7 @@ const port = 8082;
 
 var debug = require("debug")("ws-multiplayer-server:server");
 
-app.use(express.static("public"));
+app.use(express.static(path.join(__dirname, "public")));
 app.use('/', routes);
 
 const server = app.listen(port, () => {
