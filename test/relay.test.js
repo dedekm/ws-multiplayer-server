@@ -55,6 +55,31 @@ function nextMessage(ws) {
   });
 }
 
+// The next `count` messages, collected in order. Several messages can arrive in the same
+// tick, so a wait for each one in turn would miss the later ones.
+function nextMessages(ws, count) {
+  return new Promise((resolve, reject) => {
+    const received = [];
+    const onMsg = (raw) => {
+      received.push(JSON.parse(raw.toString()));
+      if (received.length === count) { cleanup(); resolve(received); }
+    };
+    const onClose = (code, reason) => { cleanup(); reject(new Error(`closed ${code} ${reason}`)); };
+    const cleanup = () => { ws.off("message", onMsg); ws.off("close", onClose); };
+    ws.on("message", onMsg);
+    ws.once("close", onClose);
+  });
+}
+
+// Connects a game while no player exists and checks that the replay is only the replay_done
+// marker. It listens before "open" because the marker can arrive in the same tick.
+async function openGame(url) {
+  const game = new WebSocket(url + "/?game");
+  const [, [first]] = await Promise.all([open(game), nextMessages(game, 1)]);
+  assert.deepEqual(first, { event: "replay_done" });
+  return game;
+}
+
 function nextClose(ws) {
   return new Promise((resolve) => ws.once("close", (code) => resolve(code)));
 }
@@ -70,8 +95,7 @@ test("player create is relayed to game with id + data", async (t) => {
   delete process.env.GAME_TOKEN;
   const { url } = await startServer(t);
 
-  const game = new WebSocket(url + "/?game");
-  await open(game);
+  const game = await openGame(url);
 
   const player = new WebSocket(url + "/");
   await open(player);
@@ -90,8 +114,7 @@ test("player update is relayed with same id", async (t) => {
   delete process.env.GAME_TOKEN;
   const { url } = await startServer(t);
 
-  const game = new WebSocket(url + "/?game");
-  await open(game);
+  const game = await openGame(url);
   const player = new WebSocket(url + "/");
   await open(player);
 
@@ -114,8 +137,7 @@ test("player disconnect sends destroy", async (t) => {
   delete process.env.GAME_TOKEN;
   const { url } = await startServer(t);
 
-  const game = new WebSocket(url + "/?game");
-  await open(game);
+  const game = await openGame(url);
   const player = new WebSocket(url + "/");
   await open(player);
 
@@ -134,8 +156,7 @@ test("game → player targeted message routes by id", async (t) => {
   delete process.env.GAME_TOKEN;
   const { url } = await startServer(t);
 
-  const game = new WebSocket(url + "/?game");
-  await open(game);
+  const game = await openGame(url);
   const player = new WebSocket(url + "/");
   await open(player);
 
@@ -155,8 +176,7 @@ test("duplicate create is ignored", async (t) => {
   delete process.env.GAME_TOKEN;
   const { url } = await startServer(t);
 
-  const game = new WebSocket(url + "/?game");
-  await open(game);
+  const game = await openGame(url);
   const player = new WebSocket(url + "/");
   await open(player);
 
@@ -195,8 +215,7 @@ test("invalid JSON does not crash the socket", async (t) => {
   delete process.env.GAME_TOKEN;
   const { url } = await startServer(t);
 
-  const game = new WebSocket(url + "/?game");
-  await open(game);
+  const game = await openGame(url);
   const player = new WebSocket(url + "/");
   await open(player);
 
@@ -213,8 +232,7 @@ test("reconnecting game replays create for existing players", async (t) => {
   delete process.env.GAME_TOKEN;
   const { url } = await startServer(t);
 
-  const game1 = new WebSocket(url + "/?game");
-  await open(game1);
+  const game1 = await openGame(url);
 
   const player = new WebSocket(url + "/");
   await open(player);
@@ -224,14 +242,14 @@ test("reconnecting game replays create for existing players", async (t) => {
   await close(game1);
 
   const game2 = new WebSocket(url + "/?game");
-  const replayedP = nextMessage(game2);
-  await open(game2);
-  const replayed = await replayedP;
+  const [, [replayed, replayDone]] = await Promise.all([open(game2), nextMessages(game2, 2)]);
   assert.equal(replayed.event, "create");
   assert.equal(replayed.id, created.id);
   assert.equal(replayed.team, 3);
   assert.equal(replayed.name, "alice");
+  assert.deepEqual(replayDone, { event: "replay_done" });
 
+  // Exactly one replay_done: the next message is the live update, not a second marker.
   player.send(JSON.stringify({ event: "update", input: { x: 0.2 } }));
   const upd = await nextMessage(game2);
   assert.equal(upd.event, "update");
@@ -241,19 +259,57 @@ test("reconnecting game replays create for existing players", async (t) => {
   await close(game2);
 });
 
+test("game connecting with no players gets replay_done as its first message", async (t) => {
+  delete process.env.GAME_TOKEN;
+  const { url } = await startServer(t);
+
+  const game = new WebSocket(url + "/?game");
+  const [, [first]] = await Promise.all([open(game), nextMessages(game, 1)]);
+  assert.deepEqual(first, { event: "replay_done" });
+
+  await close(game);
+});
+
+test("game connecting with two players gets both creates, then replay_done last", async (t) => {
+  delete process.env.GAME_TOKEN;
+  const { url } = await startServer(t);
+
+  // The first game only learns the relay-assigned ids, then goes away.
+  const game1 = await openGame(url);
+  const alice = new WebSocket(url + "/");
+  await open(alice);
+  alice.send(JSON.stringify({ event: "create", data: { team: 1, name: "alice" } }));
+  const createdAlice = await nextMessage(game1);
+  const bob = new WebSocket(url + "/");
+  await open(bob);
+  bob.send(JSON.stringify({ event: "create", data: { team: 2, name: "bob" } }));
+  const createdBob = await nextMessage(game1);
+  await close(game1);
+
+  const game2 = new WebSocket(url + "/?game");
+  const [, replay] = await Promise.all([open(game2), nextMessages(game2, 3)]);
+  assert.deepEqual(replay, [
+    { event: "create", id: createdAlice.id, team: 1, name: "alice" },
+    { event: "create", id: createdBob.id, team: 2, name: "bob" },
+    { event: "replay_done" },
+  ]);
+
+  await close(alice);
+  await close(bob);
+  await close(game2);
+});
+
 test("new game connection replaces the old one", async (t) => {
   delete process.env.GAME_TOKEN;
   const { url } = await startServer(t);
 
-  const game1 = new WebSocket(url + "/?game");
-  await open(game1);
+  const game1 = await openGame(url);
 
   const closedP = nextClose(game1);
-  const game2 = new WebSocket(url + "/?game");
-  await open(game2);
+  const game2 = await openGame(url);
 
   const code = await closedP;
-  assert.equal(code, 1000);
+  assert.equal(code, 4000);
 
   const player = new WebSocket(url + "/");
   await open(player);
@@ -314,8 +370,7 @@ function readBytes(socket, initial, count) {
 }
 
 async function assertRelayStillWorks(url) {
-  const game = new WebSocket(url + "/?game");
-  await open(game);
+  const game = await openGame(url);
   const player = new WebSocket(url + "/");
   await open(player);
   player.send(JSON.stringify({ event: "create", data: {} }));
@@ -370,9 +425,11 @@ for (const target of ["/", "/?game"]) {
     const { socket, rest } = await rawUpgrade(srv, target);
     // Unmasked client text frame violates the protocol.
     socket.write(Buffer.from([0x81, 0x02, 0x68, 0x69]));
+    // A game socket first receives the replay_done text frame (2-byte header + payload).
+    const skip = target === "/" ? 0 : 2 + JSON.stringify({ event: "replay_done" }).length;
     // Only an early close without a close frame is tolerated.
-    const bytes = await readBytes(socket, rest, 1).catch(() => null);
-    if (bytes) assert.equal(bytes[0], 0x88);
+    const bytes = await readBytes(socket, rest, skip + 1).catch(() => null);
+    if (bytes) assert.equal(bytes[skip], 0x88);
     socket.destroy();
 
     await assertRelayStillWorks(srv.url);
@@ -383,8 +440,7 @@ test("player cannot override event or id in update", async (t) => {
   delete process.env.GAME_TOKEN;
   const { url } = await startServer(t);
 
-  const game = new WebSocket(url + "/?game");
-  await open(game);
+  const game = await openGame(url);
   const player = new WebSocket(url + "/");
   await open(player);
 
@@ -405,8 +461,7 @@ test("player cannot override event or id in create", async (t) => {
   delete process.env.GAME_TOKEN;
   const { url } = await startServer(t);
 
-  const game = new WebSocket(url + "/?game");
-  await open(game);
+  const game = await openGame(url);
   const player = new WebSocket(url + "/");
   await open(player);
 
@@ -425,8 +480,7 @@ test("replayed create keeps the relay-assigned id", async (t) => {
   delete process.env.GAME_TOKEN;
   const { url } = await startServer(t);
 
-  const game1 = new WebSocket(url + "/?game");
-  await open(game1);
+  const game1 = await openGame(url);
   const player = new WebSocket(url + "/");
   await open(player);
 
@@ -436,11 +490,10 @@ test("replayed create keeps the relay-assigned id", async (t) => {
   await close(game1);
 
   const game2 = new WebSocket(url + "/?game");
-  const replayedP = nextMessage(game2);
-  await open(game2);
-  const replayed = await replayedP;
+  const [, [replayed, replayDone]] = await Promise.all([open(game2), nextMessages(game2, 2)]);
   assert.equal(replayed.event, "create");
   assert.equal(replayed.id, created.id);
+  assert.deepEqual(replayDone, { event: "replay_done" });
 
   await close(player);
   await close(game2);
@@ -450,8 +503,7 @@ test("heartbeat terminates a player that never pongs and game gets destroy", { t
   delete process.env.GAME_TOKEN;
   const { url } = await startServer(t, { heartbeatIntervalMs: 50 });
 
-  const game = new WebSocket(url + "/?game");
-  await open(game);
+  const game = await openGame(url);
   const player = new WebSocket(url + "/", { autoPong: false });
   await open(player);
 
@@ -472,8 +524,7 @@ test("heartbeat keeps a responsive player connected", { timeout: 2000 }, async (
   delete process.env.GAME_TOKEN;
   const { url } = await startServer(t, { heartbeatIntervalMs: 100 });
 
-  const game = new WebSocket(url + "/?game");
-  await open(game);
+  const game = await openGame(url);
   const player = new WebSocket(url + "/");
   let pings = 0;
   player.on("ping", () => { pings++; });
@@ -501,8 +552,7 @@ test("oversized frame closes the player with 1009 and game gets destroy", { time
   delete process.env.GAME_TOKEN;
   const { url } = await startServer(t);
 
-  const game = new WebSocket(url + "/?game");
-  await open(game);
+  const game = await openGame(url);
   const player = new WebSocket(url + "/");
   await open(player);
 
@@ -525,8 +575,7 @@ test("normal-sized create (~1 KB data) is still relayed unchanged", { timeout: 2
   delete process.env.GAME_TOKEN;
   const { url } = await startServer(t);
 
-  const game = new WebSocket(url + "/?game");
-  await open(game);
+  const game = await openGame(url);
   const player = new WebSocket(url + "/");
   await open(player);
 

@@ -9,6 +9,11 @@ const logPlayer = require("debug")("ws-multiplayer-server:player");
 // Largest accepted message (ws sums fragments); above this it closes the socket with 1009.
 const MAX_PAYLOAD_BYTES = 4096;
 
+// Application close code (4000-4999 is the private range) for a game connection replaced by a
+// newer one; game clients must not reconnect on exactly this code, otherwise two game instances
+// replace each other in a loop. The reason text is informational.
+const CLOSE_REPLACED = 4000;
+
 function canSend(ws) {
   return ws && ws.readyState === WebSocket.OPEN;
 }
@@ -63,7 +68,7 @@ function setupWebSocket(server, { heartbeatIntervalMs = 15000 } = {}) {
       }
       if (canSend(gameWs)) {
         logGame("replacing existing game connection");
-        gameWs.close(1000, "replaced by new game connection");
+        gameWs.close(CLOSE_REPLACED, "replaced by new game connection");
       }
 
       gameWs = ws;
@@ -73,6 +78,8 @@ function setupWebSocket(server, { heartbeatIntervalMs = 15000 } = {}) {
         logGame("replaying create for %s", id);
         ws.send(JSON.stringify({ ...data, event: "create", id }));
       }
+      ws.send(JSON.stringify({ event: "replay_done" }));
+      logGame("replay done");
 
       ws.on("close", () => {
         logGame("game disconnected");
